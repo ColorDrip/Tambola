@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tambola</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            width: 80%;
+            height: 80%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            background-color: #fff;
+        }
+        .left-section, .right-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 2px;
+            width: 100%;
+        }
+        .grid-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding-top: 100%;
+            position: relative;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        .grid-item span {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
+        .highlight {
+            background-color: #FFBF00; /* Amber color */
+        }
+        #display-box {
+            margin-top: 20px;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            text-align: center;
+            background-color: #fafafa;
+        }
+        button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        h1 {
+            font-size: 36px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .right-section h1 {
+            margin-top: 0;
+        }
+        .ticket {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 2px;
+            margin-bottom: 20px;
+            border: 2px solid #007BFF;
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 50px;
+            height: 50px;
+            border: 1px solid #ccc;
+            font-weight: bold;
+        }
+        .empty {
+            background-color: #f4f4f9;
+        }
+        .highlighted {
+            background-color: #28a745; /* Green color */
+            color: #fff;
+        }
+        .ticket-name-header {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            position: relative; /* Needed for draggable */
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        select {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tambola</h1>
+    <div class="container">
+        <div class="left-section">
+            <div class="grid-container" id="grid-container">
+                <!-- Grid items will be generated by JavaScript -->
+            </div>
+        </div>
+        <div class="right-section">
+            <button onclick="generateRandomNumber()">Generate Random Number</button>
+            <div id="display-box">Random Number: </div>
+            <select id="name-dropdown" onchange="displayTicket()">
+                <option value="">Select a Name</option>
+                <!-- Options will be added by JavaScript -->
+            </select>
+        </div>
+    </div>
+
+    <!-- The Modal -->
+    <div id="ticketModal" class="modal">
+        <div id="modalContent" class="modal-content">
+            <span class="close" onclick="closeTicketModal()">&times;</span>
+            <div id="ticket-container">
+                <!-- Ticket will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Create the grid
+        const gridContainer = document.getElementById('grid-container');
+        for (let i = 1; i <= 100; i++) {
+            const gridItem = document.createElement('div');
+            gridItem.classList.add('grid-item');
+            gridItem.id = 'grid-item-' + i;
+            const span = document.createElement('span');
+            span.textContent = i;
+            gridItem.appendChild(span);
+            gridContainer.appendChild(gridItem);
+        }
+
+        const highlightedNumbers = new Set();
+
+        // Generate random number and highlight it in the grid
+        function generateRandomNumber() {
+            if (highlightedNumbers.size >= 100) {
+                alert('All numbers have been highlighted!');
+                return;
+            }
+
+            let randomNumber;
+            do {
+                // Generate a random number between 1 and 100
+                randomNumber = Math.floor(Math.random() * 100) + 1;
+            } while (highlightedNumbers.has(randomNumber));
+
+            // Add the number to the set of highlighted numbers
+            highlightedNumbers.add(randomNumber);
+
+            // Display the random number
+            const displayBox = document.getElementById('display-box');
+            displayBox.textContent = 'Random Number: ' + randomNumber;
+
+            // Highlight the corresponding grid item
+            const gridItem = document.getElementById('grid-item-' + randomNumber);
+            gridItem.classList.add('highlight');
+        }
+
+        // Generate and manage tickets
+        const names = [
+            "Alice", "Bob", "Charlie", "David", "Eve", 
+            "Frank", "Grace", "Hank", "Ivy", "Jack", 
+            "Karen", "Leo", "Mona", "Nina", "Oscar", 
+            "Paul", "Quincy", "Rose", "Steve", "Tina"
+        ];
+
+        const tickets = {};
+
+        function generateTicket() {
+            const ticket = [];
+            for (let i = 0; i < 9; i++) {
+                ticket.push([]);
+            }
+
+            for (let i = 0; i < 3; i++) {
+                const row = new Set();
+                while (row.size < 5) {
+                    const num = Math.floor(Math.random() * 90) + 1;
+                    const col = Math.floor((num - 1) / 10);
+                    if (ticket[col].length < 3 && !ticket[col].includes(num)) {
+                        ticket[col].push(num);
+                        row.add(num);
+                    }
+                }
+            }
+
+            for (let col of ticket) {
+                col.sort((a, b) => a - b);
+                while (col.length < 3) {
+                    col.splice(Math.floor(Math.random() * col.length), 0, '');
+                }
+            }
+
+            return ticket.flat();
+        }
+
+        function createTicketElement(ticket, name, highlightedNumbers) {
+            const ticketElement = document.createElement('div');
+            ticketElement.classList.add('ticket');
+
+            ticket.forEach(number => {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                if (number === '') {
+                    cell.classList.add('empty');
+                } else {
+                    cell.textContent = number;
+                    if (highlightedNumbers.has(Number(number))) {
+                        cell.classList.add('highlighted');
+                    }
+                }
+                ticketElement.appendChild(cell);
+            });
+
+            return ticketElement;
+        }
+
+        function populateDropdown() {
+            const dropdown = document.getElementById('name-dropdown');
+            names.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                dropdown.appendChild(option);
+            });
+        }
+
+        function displayTicket() {
+            const selectedName = document.getElementById('name-dropdown').value;
+            if (!selectedName) return;
+
+            if (!tickets[selectedName]) {
+                tickets[selectedName] = generateTicket();
+            }
+
+            const ticket = tickets[selectedName];
+            const ticketElement = createTicketElement(ticket, selectedName, highlightedNumbers);
+
+            const ticketContainer = document.getElementById('ticket-container');
+            ticketContainer.innerHTML = ''; // Clear previous ticket
+
+            // Add name header above the ticket
+            const nameHeader = document.createElement('div');
+            nameHeader.classList.add('ticket-name-header');
+            nameHeader.textContent = selectedName;
+            ticketContainer.appendChild(nameHeader);
+
+            ticketContainer.appendChild(ticketElement);
+
+            document.getElementById('ticketModal').style.display = "block";
+        }
+
+        function closeTicketModal() {
+            document.getElementById('ticketModal').style.display = "none";
+        }
+
+        // Make the modal draggable
+        let modal = document.getElementById('ticketModal');
+        let modalContent = document.getElementById('modalContent');
+        let offsetX, offsetY;
+
+        modalContent.onmousedown = function(e) {
+            offsetX = e.clientX - modalContent.getBoundingClientRect().left;
+            offsetY = e.clientY - modalContent.getBoundingClientRect().top;
+
+            document.onmousemove = function(e) {
+                modalContent.style.left = (e.clientX - offsetX) + 'px';
+                modalContent.style.top = (e.clientY - offsetY) + 'px';
+            }
+
+            document.onmouseup = function() {
+                document.onmousemove = null;
+                document.onmouseup = null;
+            }
+        }
+
+        // Close the modal when the user clicks anywhere outside of the modal
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Initialize dropdown
+        populateDropdown();
+    </script>
+</body>
+</html>
