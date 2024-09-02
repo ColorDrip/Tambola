@@ -1,0 +1,30 @@
+from PIL import Image
+import os
+
+def images_to_pdf(image_folder, output_pdf):
+    # Get all image file names in the folder
+    image_files = [f for f in os.listdir(image_folder) if f.endswith(('png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif'))]
+    
+    # Sort images to maintain order
+    image_files.sort()
+
+    # Load the images
+    images = []
+    for file in image_files:
+        img_path = os.path.join(image_folder, file)
+        img = Image.open(img_path)
+        # Convert all images to RGB mode
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        images.append(img)
+    
+    # Save images to a PDF file
+    if images:
+        images[0].save(output_pdf, save_all=True, append_images=images[1:])
+
+    print(f"PDF created successfully: {output_pdf}")
+
+# Example usage
+image_folder = 'C:/Users/91888/OneDrive/Documents'  # Replace with your image folder path
+output_pdf = 'C:/Users/91888/OneDrive/Documents/output.pdf'  # Replace with the desired output PDF file name
+images_to_pdf(image_folder, output_pdf)
