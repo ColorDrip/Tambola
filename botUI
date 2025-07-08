@@ -1,0 +1,554 @@
+import os
+import json
+import http.server
+import socketserver
+import threading
+import webbrowser
+import pandas as pd
+import numpy as np
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk import everygrams
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from datetime import datetime
+import base64
+
+# Download required NLTK resources
+try:
+    nltk.data.find('tokenizers/punkt')
+    nltk.data.find('corpora/stopwords')
+    nltk.data.find('corpora/wordnet')
+except:
+    nltk.download('punkt', quiet=True)
+    nltk.download('stopwords', quiet=True)
+    nltk.download('wordnet', quiet=True)
+
+class FAQSystem:
+    def __init__(self):
+        self.faq_path = "faq_knowledge.xlsx"
+        self.log_path = "conversation_log.xlsx"
+        self.stop_words = set(stopwords.words('english'))
+        self.lemmatizer = WordNetLemmatizer()
+        self.initialize_files()
+        self.load_data()
+        self.initialize_vectorizer()
+    
+    def initialize_files(self):
+        """Create template files if they don't exist"""
+        if not os.path.exists(self.faq_path) or pd.read_excel(self.faq_path).empty:
+            faq_template = pd.DataFrame({
+                'Question': [
+                    'What is your return policy?',
+                    'How do I reset my password?',
+                    'Do you ship internationally?',
+                    'How can I track my order?',
+                    'What payment methods do you accept?'
+                ],
+                'Answer': [
+                    'We offer a 30-day return policy on all unused items',
+                    'Click "Forgot Password" on the login page',
+                    'Yes, we ship to over 50 countries',
+                    'Use the tracking number sent to your email',
+                    'We accept credit cards, PayPal, and bank transfers'
+                ],
+                'Category': ['Policy', 'Account', 'Shipping', 'Orders', 'Payments'],
+                'Last Used': [np.nan] * 5,
+                'Use Count': [0] * 5
+            })
+            faq_template.to_excel(self.faq_path, index=False)
+        
+        if not os.path.exists(self.log_path):
+            log_template = pd.DataFrame(columns=[
+                'Timestamp', 'User Input', 'System Response', 
+                'Matched Question', 'Confidence'
+            ])
+            log_template.to_excel(self.log_path, index=False)
+    
+    def load_data(self):
+        """Load data from Excel files"""
+        self.faqs = pd.read_excel(self.faq_path)
+        self.logs = pd.read_excel(self.log_path) if os.path.exists(self.log_path) else pd.DataFrame()
+    
+    def initialize_vectorizer(self):
+        """Initialize the TF-IDF vectorizer"""
+        self.vectorizer = TfidfVectorizer(
+            tokenizer=self.nltk_tokenizer,
+            ngram_range=(1, 2),
+            stop_words=list(self.stop_words)
+        )
+        self.question_vectors = self.vectorizer.fit_transform(self.faqs['Question'])
+    
+    def nltk_tokenizer(self, text):
+        """Custom tokenizer using NLTK"""
+        text = re.sub(r'[^\w\s]', '', text.lower())
+        tokens = word_tokenize(text)
+        filtered_tokens = [
+            self.lemmatizer.lemmatize(token) 
+            for token in tokens 
+            if token not in self.stop_words and len(token) > 2
+        ]
+        ngrams = list(everygrams(filtered_tokens, max_len=2))
+        return ['_'.join(gram) for gram in ngrams]
+    
+    def process_query(self, query):
+        """Process a user query and return a response"""
+        # Find best match
+        match, confidence = self.find_best_match(query)
+        
+        if match is not None:
+            # Update usage stats
+            self.update_faq_usage(match.name)
+            
+            # Format response
+            response = {
+                'type': 'answer',
+                'confidence': f"{confidence:.0%}",
+                'question': match['Question'],
+                'answer': match['Answer'],
+                'category': match['Category'],
+                'count': match['Use Count']
+            }
+        else:
+            # Generate fallback response
+            response = {
+                'type': 'fallback',
+                'response': self.generate_fallback_response(query)
+            }
+        
+        # Log the conversation
+        self.log_conversation(query, response)
+        return response
+    
+    def find_best_match(self, query):
+        """Find best match using TF-IDF with n-grams"""
+        query_vec = self.vectorizer.transform([query])
+        similarities = cosine_similarity(query_vec, self.question_vectors)
+        max_index = np.argmax(similarities)
+        max_similarity = similarities[0, max_index]
+        
+        if max_similarity > 0.3:
+            return self.faqs.iloc[max_index], max_similarity
+        return None, max_similarity
+    
+    def update_faq_usage(self, index):
+        """Update usage statistics for a FAQ entry"""
+        self.faqs.at[index, 'Use Count'] += 1
+        self.faqs.at[index, 'Last Used'] = datetime.now()
+        self.faqs.to_excel(self.faq_path, index=False)
+    
+    def generate_fallback_response(self, query):
+        """Generate fallback response for unknown queries"""
+        # Extract keywords
+        keywords = self.extract_keywords(query)
+        
+        # Find related questions
+        related_questions = []
+        for _, row in self.faqs.iterrows():
+            faq_tokens = set(self.nltk_tokenizer(row['Question']))
+            if keywords & faq_tokens:
+                related_questions.append(row['Question'])
+        
+        # Format response
+        if related_questions:
+            response = "I couldn't find an exact match, but these might help:\n"
+            for i, q in enumerate(set(related_questions[:3]), 1):
+                response += f"{i}. {q}\n"
+        else:
+            top_questions = self.faqs.sort_values('Use Count', ascending=False)['Question'].head(3).tolist()
+            response = "I'm not sure about that. Try these popular questions:\n"
+            for i, q in enumerate(top_questions, 1):
+                response += f"{i}. {q}\n"
+        
+        return response
+    
+    def extract_keywords(self, text):
+        """Extract keywords from text"""
+        tokens = self.nltk_tokenizer(text)
+        return set(tokens)
+    
+    def log_conversation(self, user_input, response):
+        """Record conversation to Excel log"""
+        log_entry = {
+            'Timestamp': datetime.now(),
+            'User Input': user_input,
+            'System Response': response['answer'] if response['type'] == 'answer' else response['response'],
+            'Matched Question': response.get('question', ''),
+            'Confidence': response.get('confidence', '')
+        }
+        
+        log_df = pd.DataFrame([log_entry])
+        
+        # Append to existing log or create new
+        if os.path.exists(self.log_path):
+            existing_log = pd.read_excel(self.log_path)
+            updated_log = pd.concat([existing_log, log_df], ignore_index=True)
+        else:
+            updated_log = log_df
+        
+        updated_log.to_excel(self.log_path, index=False)
+
+class WebServer:
+    def __init__(self, port=8000):
+        self.port = port
+        self.faq_system = FAQSystem()
+        self.handler = self.create_handler()
+    
+    def create_handler(self):
+        faq_system = self.faq_system
+        
+        class FAQRequestHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == '/':
+                    self.send_response(200)
+                    self.send_header('Content-type', 'text/html')
+                    self.end_headers()
+                    self.wfile.write(HTML_INTERFACE.encode())
+                elif self.path == '/style.css':
+                    self.send_response(200)
+                    self.send_header('Content-type', 'text/css')
+                    self.end_headers()
+                    self.wfile.write(CSS_STYLES.encode())
+                else:
+                    self.send_error(404, "File not found")
+            
+            def do_POST(self):
+                if self.path == '/ask':
+                    content_length = int(self.headers['Content-Length'])
+                    post_data = self.rfile.read(content_length)
+                    data = json.loads(post_data.decode())
+                    
+                    # Process the question
+                    question = data.get('question', '')
+                    response = faq_system.process_query(question)
+                    
+                    # Send response
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(response).encode())
+                else:
+                    self.send_error(404, "Endpoint not found")
+        
+        return FAQRequestHandler
+    
+    def start(self):
+        """Start the web server"""
+        with socketserver.TCPServer(("", self.port), self.handler) as httpd:
+            print(f"Server started at http://localhost:{self.port}")
+            print("Press Ctrl+C to stop the server")
+            webbrowser.open(f"http://localhost:{self.port}")
+            httpd.serve_forever()
+
+# HTML and CSS embedded in the Python file
+HTML_INTERFACE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ Chat Bot</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="chat-header">
+            <h1>FAQ Assistant</h1>
+            <p>Ask me anything about our products and services</p>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="message bot-message">
+                <div class="message-content">
+                    <i class="fas fa-robot"></i>
+                    <div class="text">Hello! I'm your FAQ assistant. How can I help you today?</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="userInput" placeholder="Type your question here...">
+            <button id="sendButton"><i class="fas fa-paper-plane"></i> Send</button>
+        </div>
+    </div>
+    
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        
+        function addMessage(text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isUser ? 'message user-message' : 'message bot-message';
+            
+            const icon = isUser 
+                ? '<i class="fas fa-user"></i>' 
+                : '<i class="fas fa-robot"></i>';
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    ${icon}
+                    <div class="text">${text}</div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        async function askQuestion() {
+            const question = userInput.value.trim();
+            if (!question) return;
+            
+            addMessage(question, true);
+            userInput.value = '';
+            userInput.focus();
+            
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question })
+                });
+                
+                const data = await response.json();
+                
+                if (data.type === 'answer') {
+                    const answerHTML = `
+                        <div class="answer">
+                            <div class="confidence">Confidence: ${data.confidence}</div>
+                            <div class="question">Q: ${data.question}</div>
+                            <div class="response">A: ${data.answer}</div>
+                            <div class="meta">Category: ${data.category} | Used: ${data.count} times</div>
+                        </div>
+                    `;
+                    addMessage(answerHTML);
+                } else {
+                    const fallbackHTML = `
+                        <div class="fallback">
+                            <div class="response">${data.response.replace(/\\n/g, '<br>')}</div>
+                        </div>
+                    `;
+                    addMessage(fallbackHTML);
+                }
+            } catch (error) {
+                addMessage('Sorry, I encountered an error. Please try again.');
+                console.error('Error:', error);
+            }
+        }
+        
+        sendButton.addEventListener('click', askQuestion);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') askQuestion();
+        });
+    </script>
+</body>
+</html>
+"""
+
+CSS_STYLES = """
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    width: 100%;
+    max-width: 800px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin: 20px;
+}
+
+.chat-header {
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+.chat-header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.chat-header p {
+    margin: 5px 0 0;
+    opacity: 0.9;
+}
+
+.chat-container {
+    height: 500px;
+    overflow-y: auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+}
+
+.message {
+    margin-bottom: 20px;
+    display: flex;
+}
+
+.message-content {
+    display: flex;
+    max-width: 80%;
+}
+
+.message .text {
+    padding: 12px 16px;
+    border-radius: 18px;
+    line-height: 1.4;
+}
+
+.user-message {
+    justify-content: flex-end;
+}
+
+.user-message .message-content {
+    flex-direction: row-reverse;
+}
+
+.user-message .text {
+    background-color: #6e8efb;
+    color: white;
+    border-bottom-right-radius: 5px;
+}
+
+.bot-message .text {
+    background-color: #e8ebf0;
+    color: #333;
+    border-bottom-left-radius: 5px;
+}
+
+.message i {
+    font-size: 24px;
+    margin: 0 10px;
+    color: #a777e3;
+    align-self: flex-end;
+}
+
+.user-message i {
+    color: #6e8efb;
+}
+
+.input-container {
+    display: flex;
+    padding: 15px;
+    background-color: white;
+    border-top: 1px solid #eee;
+}
+
+.input-container input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.input-container input:focus {
+    border-color: #a777e3;
+}
+
+.input-container button {
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 12px 25px;
+    margin-left: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.input-container button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.input-container button i {
+    margin-right: 5px;
+}
+
+.answer {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.confidence {
+    font-size: 14px;
+    color: #6e8efb;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.question {
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.response {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.meta {
+    font-size: 13px;
+    color: #777;
+    margin-top: 8px;
+}
+
+.fallback {
+    background-color: #fff8e1;
+    border-left: 4px solid #ffc107;
+    padding: 15px;
+    border-radius: 0 8px 8px 0;
+}
+
+@media (max-width: 600px) {
+    .container {
+        margin: 10px;
+        height: 95vh;
+    }
+    
+    .chat-container {
+        height: calc(100vh - 200px);
+    }
+    
+    .input-container {
+        flex-direction: column;
+    }
+    
+    .input-container button {
+        margin: 10px 0 0;
+        width: 100%;
+    }
+}
+"""
+
+if __name__ == '__main__':
+    print("🚀 Starting FAQ Web Bot...")
+    server = WebServer()
+    server.start()
