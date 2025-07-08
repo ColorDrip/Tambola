@@ -1,0 +1,108 @@
+import pandas as pd
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from datetime import datetime
+from textblob import TextBlob
+import tkinter as tk
+from tkinter import scrolledtext
+
+# Point to your existing nltk_data folder
+nltk.data.path.append(r"C:\Users\YourName\nltk_data")  # ← Change this path
+
+# Load FAQ Excel file
+faq_df = pd.read_excel("faq_data.xlsx", sheet_name="FAQ")
+questions = faq_df['Question'].tolist()
+answers = faq_df['Answer'].tolist()
+
+stop_words = set(stopwords.words("english"))
+lemmatizer = WordNetLemmatizer()
+
+synonyms_dict = {
+    "refund": "return",
+    "purchase": "buy",
+    "delivery": "shipping",
+    "cancel": "cancellation",
+    "track": "tracking",
+    "order": "purchase"
+}
+
+def correct_spelling(text):
+    return str(TextBlob(text).correct())
+
+def expand_synonyms(text):
+    for word, synonym in synonyms_dict.items():
+        text = text.replace(word, synonym)
+    return text
+
+def preprocess(text):
+    text = correct_spelling(text)
+    text = expand_synonyms(text)
+    tokens = word_tokenize(text.lower())
+    filtered = [lemmatizer.lemmatize(w) for w in tokens if w.isalnum() and w not in stop_words]
+    return " ".join(filtered)
+
+processed_questions = [preprocess(q) for q in questions]
+vectorizer = TfidfVectorizer(ngram_range=(1, 2))
+tfidf_matrix = vectorizer.fit_transform(processed_questions)
+
+def get_answer(user_input):
+    processed_input = preprocess(user_input)
+    user_vec = vectorizer.transform([processed_input])
+    similarity = cosine_similarity(user_vec, tfidf_matrix)[0]
+
+    top_indices = similarity.argsort()[-3:][::-1]
+    top_scores = similarity[top_indices]
+
+    if top_scores[0] < 0.3:
+        suggestions = [(questions[i], round(top_scores[idx], 2)) for idx, i in enumerate(top_indices)]
+        return None, None, suggestions
+
+    best_idx = top_indices[0]
+    return questions[best_idx], answers[best_idx], None
+
+# GUI with Tkinter
+def send():
+    user_input = entry.get()
+    if user_input.strip() == "":
+        return
+
+    chat_area.insert(tk.END, f"You: {user_input}\n")
+    matched_q, response, suggestions = get_answer(user_input)
+
+    if response:
+        chat_area.insert(tk.END, f"Matched Q: {matched_q}\nBot: {response}\n\n")
+    else:
+        chat_area.insert(tk.END, "Bot: I couldn't find an exact match. Here are some similar questions:\n")
+        for i, (q, score) in enumerate(suggestions, 1):
+            chat_area.insert(tk.END, f"  {i}. {q} (Similarity: {score})\n")
+        chat_area.insert(tk.END, "\n")
+
+    # Log conversation
+    with open("chat_log.txt", "a", encoding="utf-8") as f:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"[{timestamp}] User: {user_input}\n")
+        if response:
+            f.write(f"[{timestamp}] Bot: {response}\n\n")
+        else:
+            f.write(f"[{timestamp}] Bot: Suggestions - {', '.join([q for q, _ in suggestions])}\n\n")
+
+    entry.delete(0, tk.END)
+
+# Build the chat window
+root = tk.Tk()
+root.title("FAQ Chatbot 🤖")
+
+chat_area = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=70, height=25, font=("Arial", 10))
+chat_area.pack(padx=10, pady=10)
+
+entry = tk.Entry(root, width=60, font=("Arial", 12))
+entry.pack(side=tk.LEFT, padx=(10, 0), pady=(0, 10))
+
+send_button = tk.Button(root, text="Send", command=send, font=("Arial", 10), width=10)
+send_button.pack(side=tk.LEFT, padx=10, pady=(0, 10))
+
+root.mainloop()
