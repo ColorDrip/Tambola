@@ -2,7 +2,6 @@ import os
 import json
 import http.server
 import socketserver
-import threading
 import webbrowser
 import pandas as pd
 import numpy as np
@@ -15,6 +14,14 @@ from nltk import everygrams
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from datetime import datetime
+
+# Set NLTK data path to your existing folder
+NLTK_DATA_PATH = os.path.join(os.path.expanduser("~"), "nltk_data")
+if os.path.exists(NLTK_DATA_PATH):
+    nltk.data.path.append(NLTK_DATA_PATH)
+    print(f"✅ Using NLTK data from: {NLTK_DATA_PATH}")
+else:
+    print(f"⚠️ NLTK data not found at {NLTK_DATA_PATH}. Using default location.")
 
 class FAQSystem:
     def __init__(self):
@@ -189,8 +196,9 @@ class WebServer:
         """Start the web server"""
         with socketserver.TCPServer(("", self.port), self.RequestHandler) as httpd:
             httpd.faq_system = self.faq_system
-            print(f"Server started at http://localhost:{self.port}")
-            print("Press Ctrl+C to stop the server")
+            print(f"🌐 Server started at http://localhost:{self.port}")
+            print("🖥️ Web interface ready")
+            print("🛑 Press Ctrl+C to stop the server")
             webbrowser.open(f"http://localhost:{self.port}")
             httpd.serve_forever()
     
@@ -235,8 +243,9 @@ HTML_INTERFACE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FAQ Chat Bot</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS will be embedded here */
+    </style>
 </head>
 <body>
     <div class="container">
@@ -248,15 +257,14 @@ HTML_INTERFACE = """
         <div class="chat-container" id="chatContainer">
             <div class="message bot-message">
                 <div class="message-content">
-                    <i class="fas fa-robot"></i>
                     <div class="text">Hello! I'm your FAQ assistant. How can I help you today?</div>
                 </div>
             </div>
         </div>
         
         <div class="input-container">
-            <input type="text" id="userInput" placeholder="Type your question here...">
-            <button id="sendButton"><i class="fas fa-paper-plane"></i> Send</button>
+            <input type="text" id="userInput" placeholder="Type your question here..." autofocus>
+            <button id="sendButton">Send</button>
         </div>
     </div>
     
@@ -269,13 +277,8 @@ HTML_INTERFACE = """
             const messageDiv = document.createElement('div');
             messageDiv.className = isUser ? 'message user-message' : 'message bot-message';
             
-            const icon = isUser 
-                ? '<i class="fas fa-user"></i>' 
-                : '<i class="fas fa-robot"></i>';
-            
             messageDiv.innerHTML = `
                 <div class="message-content">
-                    ${icon}
                     <div class="text">${text}</div>
                 </div>
             `;
@@ -360,7 +363,7 @@ body {
 }
 
 .chat-header {
-    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    background: linear-gradient(135deg, #4a6fc9, #7e57c2);
     color: white;
     padding: 20px;
     text-align: center;
@@ -397,18 +400,15 @@ body {
     padding: 12px 16px;
     border-radius: 18px;
     line-height: 1.4;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .user-message {
     justify-content: flex-end;
 }
 
-.user-message .message-content {
-    flex-direction: row-reverse;
-}
-
 .user-message .text {
-    background-color: #6e8efb;
+    background-color: #4a6fc9;
     color: white;
     border-bottom-right-radius: 5px;
 }
@@ -417,17 +417,6 @@ body {
     background-color: #e8ebf0;
     color: #333;
     border-bottom-left-radius: 5px;
-}
-
-.message i {
-    font-size: 24px;
-    margin: 0 10px;
-    color: #a777e3;
-    align-self: flex-end;
-}
-
-.user-message i {
-    color: #6e8efb;
 }
 
 .input-container {
@@ -448,11 +437,11 @@ body {
 }
 
 .input-container input:focus {
-    border-color: #a777e3;
+    border-color: #7e57c2;
 }
 
 .input-container button {
-    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    background: linear-gradient(135deg, #4a6fc9, #7e57c2);
     color: white;
     border: none;
     border-radius: 25px;
@@ -461,16 +450,12 @@ body {
     cursor: pointer;
     font-size: 16px;
     font-weight: 600;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.2s;
 }
 
 .input-container button:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.input-container button i {
-    margin-right: 5px;
 }
 
 .answer {
@@ -482,7 +467,7 @@ body {
 
 .confidence {
     font-size: 14px;
-    color: #6e8efb;
+    color: #4a6fc9;
     font-weight: bold;
     margin-bottom: 8px;
 }
@@ -533,6 +518,6 @@ body {
 """
 
 if __name__ == '__main__':
-    print("🚀 Starting FAQ Web Bot...")
+    print("🚀 Starting FAQ Web Bot with Your NLTK Data...")
     server = WebServer()
     server.start()
