@@ -1,0 +1,86 @@
+import pandas as pd
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from datetime import datetime
+from textblob import TextBlob
+
+# 👇 Replace with your actual path to pre-downloaded NLTK data
+nltk.data.path.append(r"C:\Users\YourName\nltk_data")  # Example path; change accordingly
+
+# Load FAQ data from Excel
+faq_df = pd.read_excel("faq_data.xlsx", sheet_name="FAQ")
+questions = faq_df['Question'].tolist()
+answers = faq_df['Answer'].tolist()
+
+# Initialize tools
+stop_words = set(stopwords.words("english"))
+lemmatizer = WordNetLemmatizer()
+
+# Synonym dictionary for expansion
+synonyms_dict = {
+    "refund": "return",
+    "purchase": "buy",
+    "delivery": "shipping",
+    "cancel": "cancellation",
+    "track": "tracking",
+    "order": "purchase"
+}
+
+# Function: spell correction
+def correct_spelling(text):
+    return str(TextBlob(text).correct())
+
+# Function: expand synonyms
+def expand_synonyms(text):
+    for word, synonym in synonyms_dict.items():
+        text = text.replace(word, synonym)
+    return text
+
+# Function: clean text
+def preprocess(text):
+    text = correct_spelling(text)
+    text = expand_synonyms(text)
+    tokens = word_tokenize(text.lower())
+    filtered = [lemmatizer.lemmatize(w) for w in tokens if w.isalnum() and w not in stop_words]
+    return " ".join(filtered)
+
+# Preprocess all FAQ questions
+processed_questions = [preprocess(q) for q in questions]
+
+# TF-IDF Vectorizer: unigrams + bigrams
+vectorizer = TfidfVectorizer(ngram_range=(1, 2))
+tfidf_matrix = vectorizer.fit_transform(processed_questions)
+
+# Logging function
+def log_conversation(user_input, bot_response):
+    with open("chat_log.txt", "a", encoding="utf-8") as f:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"[{timestamp}] User: {user_input}\n")
+        f.write(f"[{timestamp}] Bot: {bot_response}\n\n")
+
+# Match user input to FAQ
+def get_answer(user_input):
+    processed_input = preprocess(user_input)
+    user_vec = vectorizer.transform([processed_input])
+    similarity = cosine_similarity(user_vec, tfidf_matrix)
+    best_match_idx = similarity.argmax()
+    best_score = similarity[0][best_match_idx]
+
+    if best_score < 0.3:
+        return "I'm not quite sure I understand. Can you rephrase?"
+    return answers[best_match_idx]
+
+# Run chatbot
+print("Smart FAQ Bot 🤖: Ask a question (type 'exit' to quit)")
+while True:
+    user_input = input("You: ")
+    if user_input.strip().lower() == "exit":
+        print("Smart FAQ Bot: Goodbye!")
+        break
+    response = get_answer(user_input)
+    print("Smart FAQ Bot:", response)
+    log_conversation(user_input, response)
