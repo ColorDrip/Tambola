@@ -1,0 +1,494 @@
+import os
+import json
+import http.server
+import socketserver
+import webbrowser
+import pandas as pd
+import numpy as np
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk import everygrams
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from datetime import datetime
+
+print("🚀 Starting FAQ Bot with Web Interface...")
+
+# =============================================================================
+# NLTK Configuration
+# =============================================================================
+try:
+    # Try to find common NLTK data locations
+    possible_paths = [
+        os.path.join(os.path.expanduser("~"), "nltk_data"),
+        os.path.join(os.getcwd(), "nltk_data"),
+        "C:\\nltk_data",
+        "/usr/share/nltk_data"
+    ]
+    
+    nltk_data_found = False
+    for path in possible_paths:
+        if os.path.exists(path):
+            nltk.data.path.append(path)
+            print(f"✅ Found NLTK data at: {path}")
+            nltk_data_found = True
+            break
+    
+    if not nltk_data_found:
+        print("⚠️ NLTK data not found in common locations. Using default.")
+except Exception as e:
+    print(f"⚠️ Error configuring NLTK: {str(e)}")
+    print("⚠️ Using default NLTK data location")
+
+# =============================================================================
+# FAQ System Core
+# =============================================================================
+class FAQSystem:
+    def __init__(self):
+        self.faq_path = "faq_knowledge.xlsx"
+        self.log_path = "conversation_log.xlsx"
+        
+        try:
+            # Initialize NLTK components with error handling
+            self.stop_words = set(stopwords.words('english'))
+            self.lemmatizer = WordNetLemmatizer()
+            print("✅ NLTK components initialized")
+        except Exception as e:
+            print(f"⚠️ Error initializing NLTK: {str(e)}")
+            self.stop_words = set()
+            self.lemmatizer = WordNetLemmatizer()
+            print("⚠️ Using minimal NLP capabilities")
+        
+        self.initialize_files()
+        self.load_data()
+        self.initialize_vectorizer()
+    
+    def initialize_files(self):
+        """Create template files if they don't exist with sample FAQs"""
+        print("📂 Initializing data files...")
+        try:
+            if not os.path.exists(self.faq_path) or pd.read_excel(self.faq_path).empty:
+                # Sample FAQs covering various topics
+                faq_template = pd.DataFrame({
+                    'Question': [
+                        'What is your return policy?',
+                        'How do I reset my password?',
+                        'Do you ship internationally?',
+                        'How can I track my order?',
+                        'What payment methods do you accept?',
+                        'How do I contact customer support?',
+                        'What are your business hours?',
+                        'Do you offer discounts for students?',
+                        'How long does shipping take?',
+                        'Can I change my order after it has been placed?',
+                        'What should I do if I receive a damaged product?',
+                        'Do you have a physical store?',
+                        'How do I update my account information?',
+                        'What is your warranty policy?',
+                        'Can I return a digital product?'
+                    ],
+                    'Answer': [
+                        'We offer a 30-day return policy on all unused items with original packaging',
+                        'Click "Forgot Password" on the login page and follow the instructions sent to your email',
+                        'Yes, we ship to over 100 countries worldwide. Shipping costs vary by destination',
+                        'Once your order ships, you will receive a tracking number via email that you can use on our website',
+                        'We accept Visa, Mastercard, American Express, PayPal, and Apple Pay',
+                        'You can reach our support team 24/7 at support@company.com or call 1-800-123-4567',
+                        'Our customer service is available Monday-Friday 9am-9pm EST and Saturday-Sunday 10am-6pm EST',
+                        'Yes, students get 15% off with a valid student ID. Contact support for verification',
+                        'Standard shipping takes 3-5 business days within the US, 7-14 days internationally',
+                        'You can modify your order within 1 hour of placement. After that, contact support immediately',
+                        'Please contact us within 48 hours with photos of the damaged item for a replacement or refund',
+                        'Yes! Visit our flagship store at 123 Main Street, Anytown, or check our website for other locations',
+                        'Log in to your account, go to "Profile Settings", and update your information',
+                        'All products come with a 1-year manufacturer warranty covering defects in materials and workmanship',
+                        'Digital products like software licenses are non-refundable once the key has been delivered'
+                    ],
+                    'Category': ['Policy', 'Account', 'Shipping', 'Orders', 'Payments', 
+                                 'Support', 'Hours', 'Discounts', 'Shipping', 'Orders',
+                                 'Returns', 'Locations', 'Account', 'Policy', 'Digital'],
+                    'Last Used': [np.nan] * 15,
+                    'Use Count': [0] * 15
+                })
+                faq_template.to_excel(self.faq_path, index=False)
+                print(f"✅ Created FAQ knowledge base with {len(faq_template)} sample questions")
+            
+            if not os.path.exists(self.log_path):
+                log_template = pd.DataFrame(columns=[
+                    'Timestamp', 'User Input', 'System Response', 
+                    'Matched Question', 'Confidence'
+                ])
+                log_template.to_excel(self.log_path, index=False)
+                print("✅ Created conversation log")
+                
+        except Exception as e:
+            print(f"⛔ Critical error creating files: {str(e)}")
+            raise SystemExit("Exiting due to file creation error")
+    
+    def load_data(self):
+        """Load data from Excel files with error handling"""
+        try:
+            self.faqs = pd.read_excel(self.faq_path)
+            if os.path.exists(self.log_path):
+                self.logs = pd.read_excel(self.log_path)
+            else:
+                self.logs = pd.DataFrame()
+            print(f"📊 Loaded {len(self.faqs)} FAQs from database")
+        except Exception as e:
+            print(f"⛔ Error loading data files: {str(e)}")
+            raise SystemExit("Exiting due to data loading error")
+    
+    def initialize_vectorizer(self):
+        """Initialize the TF-IDF vectorizer with error handling"""
+        try:
+            self.vectorizer = TfidfVectorizer(
+                tokenizer=self.nltk_tokenizer,
+                ngram_range=(1, 2),
+                stop_words=list(self.stop_words)
+            )
+            self.question_vectors = self.vectorizer.fit_transform(self.faqs['Question'])
+            print("🔠 Vectorizer initialized with unigrams and bigrams")
+        except Exception as e:
+            print(f"⛔ Error initializing vectorizer: {str(e)}")
+            print("⚠️ Using simple text matching as fallback")
+            # Fallback to simple vectorizer
+            self.vectorizer = TfidfVectorizer()
+            self.question_vectors = self.vectorizer.fit_transform(self.faqs['Question'])
+    
+    def nltk_tokenizer(self, text):
+        """Custom tokenizer using NLTK with error handling"""
+        try:
+            text = re.sub(r'[^\w\s]', '', text.lower())
+            tokens = word_tokenize(text)
+            filtered_tokens = [
+                self.lemmatizer.lemmatize(token) 
+                for token in tokens 
+                if token not in self.stop_words and len(token) > 2
+            ]
+            ngrams = list(everygrams(filtered_tokens, max_len=2))
+            return ['_'.join(gram) for gram in ngrams]
+        except:
+            # Fallback tokenization if NLTK fails
+            return text.lower().split()
+    
+    def process_query(self, query):
+        """Process a user query and return a response with error handling"""
+        try:
+            # Find best match
+            match, confidence = self.find_best_match(query)
+            
+            if match is not None:
+                # Update usage stats
+                self.update_faq_usage(match.name)
+                
+                # Format response
+                response = {
+                    'type': 'answer',
+                    'confidence': f"{confidence:.0%}",
+                    'question': match['Question'],
+                    'answer': match['Answer'],
+                    'category': match['Category'],
+                    'count': match['Use Count']
+                }
+            else:
+                # Generate fallback response
+                response = {
+                    'type': 'fallback',
+                    'response': self.generate_fallback_response(query)
+                }
+            
+            # Log the conversation
+            self.log_conversation(query, response)
+            return response
+        except Exception as e:
+            print(f"⚠️ Error processing query: {str(e)}")
+            return {
+                'type': 'error',
+                'response': "I encountered an error processing your request. Please try again."
+            }
+    
+    def find_best_match(self, query):
+        """Find best match using TF-IDF with n-grams"""
+        try:
+            query_vec = self.vectorizer.transform([query])
+            similarities = cosine_similarity(query_vec, self.question_vectors)
+            max_index = np.argmax(similarities)
+            max_similarity = similarities[0, max_index]
+            
+            if max_similarity > 0.3:
+                return self.faqs.iloc[max_index], max_similarity
+            return None, max_similarity
+        except:
+            # Fallback matching if vectorizer fails
+            query_lower = query.lower()
+            for idx, row in self.faqs.iterrows():
+                if query_lower in row['Question'].lower():
+                    return row, 0.9
+            return None, 0
+    
+    def update_faq_usage(self, index):
+        """Update usage statistics for a FAQ entry"""
+        try:
+            self.faqs.at[index, 'Use Count'] += 1
+            self.faqs.at[index, 'Last Used'] = datetime.now()
+            self.faqs.to_excel(self.faq_path, index=False)
+        except Exception as e:
+            print(f"⚠️ Error updating FAQ usage: {str(e)}")
+    
+    def generate_fallback_response(self, query):
+        """Generate fallback response for unknown queries"""
+        try:
+            # Extract keywords
+            keywords = self.extract_keywords(query)
+            
+            # Find related questions
+            related_questions = []
+            for _, row in self.faqs.iterrows():
+                faq_tokens = set(self.nltk_tokenizer(row['Question']))
+                if keywords & faq_tokens:
+                    related_questions.append(row['Question'])
+            
+            # Format response
+            if related_questions:
+                response = "I couldn't find an exact match, but these might help:\n"
+                for i, q in enumerate(set(related_questions[:3]), 1):
+                    response += f"{i}. {q}\n"
+            else:
+                top_questions = self.faqs.sort_values('Use Count', ascending=False)['Question'].head(3).tolist()
+                response = "I'm not sure about that. Try these popular questions:\n"
+                for i, q in enumerate(top_questions, 1):
+                    response += f"{i}. {q}\n"
+            
+            return response
+        except:
+            return "I'm not sure how to answer that. Could you try rephrasing your question?"
+    
+    def extract_keywords(self, text):
+        """Extract keywords from text"""
+        try:
+            tokens = self.nltk_tokenizer(text)
+            return set(tokens)
+        except:
+            return set(text.lower().split())
+    
+    def log_conversation(self, user_input, response):
+        """Record conversation to Excel log with error handling"""
+        try:
+            log_entry = {
+                'Timestamp': datetime.now(),
+                'User Input': user_input,
+                'System Response': response['answer'] if response['type'] == 'answer' else response['response'],
+                'Matched Question': response.get('question', ''),
+                'Confidence': response.get('confidence', '')
+            }
+            
+            log_df = pd.DataFrame([log_entry])
+            
+            # Append to existing log or create new
+            if os.path.exists(self.log_path):
+                existing_log = pd.read_excel(self.log_path)
+                updated_log = pd.concat([existing_log, log_df], ignore_index=True)
+            else:
+                updated_log = log_df
+            
+            updated_log.to_excel(self.log_path, index=False)
+        except Exception as e:
+            print(f"⚠️ Error logging conversation: {str(e)}")
+
+# =============================================================================
+# Web Server
+# =============================================================================
+class WebServer:
+    def __init__(self, port=8000):
+        self.port = port
+        try:
+            self.faq_system = FAQSystem()
+        except:
+            print("⛔ Failed to initialize FAQ system. Exiting.")
+            raise SystemExit(1)
+    
+    def start(self):
+        """Start the web server"""
+        try:
+            with socketserver.TCPServer(("", self.port), self.RequestHandler) as httpd:
+                httpd.faq_system = self.faq_system
+                print(f"🌐 Web server running on port {self.port}")
+                print(f"🖥️ Open your browser to: http://localhost:{self.port}")
+                print("🛑 Press Ctrl+C to stop the server")
+                webbrowser.open(f"http://localhost:{self.port}")
+                httpd.serve_forever()
+        except Exception as e:
+            print(f"⛔ Server error: {str(e)}")
+            print("💡 Try using a different port with: python script.py --port 8080")
+
+    class RequestHandler(http.server.SimpleHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/':
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                self.wfile.write(HTML_INTERFACE.encode())
+            elif self.path == '/style.css':
+                self.send_response(200)
+                self.send_header('Content-type', 'text/css')
+                self.end_headers()
+                self.wfile.write(CSS_STYLES.encode())
+            else:
+                self.send_error(404, "Page not found")
+        
+        def do_POST(self):
+            if self.path == '/ask':
+                try:
+                    content_length = int(self.headers['Content-Length'])
+                    post_data = self.rfile.read(content_length)
+                    data = json.loads(post_data.decode())
+                    
+                    # Process the question
+                    question = data.get('question', '')
+                    if not question.strip():
+                        self.send_response(400)
+                        self.end_headers()
+                        self.wfile.write(json.dumps({
+                            'error': 'Question cannot be empty'
+                        }).encode())
+                        return
+                    
+                    response = self.server.faq_system.process_query(question)
+                    
+                    # Send response
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(response).encode())
+                except Exception as e:
+                    self.send_response(500)
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'error': 'Internal server error'
+                    }).encode())
+                    print(f"⚠️ API error: {str(e)}")
+            else:
+                self.send_error(404, "Endpoint not found")
+
+# =============================================================================
+# Embedded Web Interface
+# =============================================================================
+HTML_INTERFACE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ Assistant</title>
+    <style>
+        /* CSS will be embedded here */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #4a6fc9, #7e57c2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .chat-header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #4ade80;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .welcome-message h2 {
+            color: #4a6fc9;
+            margin-top: 0;
+        }
+
+        .sample-questions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .sample-question {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            font-size: 14px;
