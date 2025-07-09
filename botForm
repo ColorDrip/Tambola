@@ -1,0 +1,119 @@
+import sys
+import pandas as pd
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from textblob import TextBlob
+from datetime import datetime
+import os
+
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QTextEdit, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout
+
+# Set NLTK path
+nltk.data.path.append(r"C:\Users\YourName\nltk_data")  # change this path
+
+# Load FAQ
+faq_path = os.path.join(os.path.dirname(__file__), "faq_data.xlsx")
+faq_df = pd.read_excel(faq_path, sheet_name="FAQ", engine="openpyxl")
+questions = faq_df['Question'].tolist()
+answers = faq_df['Answer'].tolist()
+
+stop_words = set(stopwords.words("english"))
+lemmatizer = WordNetLemmatizer()
+synonyms_dict = {
+    "refund": "return", "purchase": "buy", "delivery": "shipping",
+    "cancel": "cancellation", "track": "tracking", "order": "purchase"
+}
+
+def correct_spelling(text):
+    return str(TextBlob(text).correct())
+
+def expand_synonyms(text):
+    for word, synonym in synonyms_dict.items():
+        text = text.replace(word, synonym)
+    return text
+
+def preprocess(text):
+    text = correct_spelling(text)
+    text = expand_synonyms(text)
+    tokens = word_tokenize(text.lower())
+    filtered = [lemmatizer.lemmatize(w) for w in tokens if w.isalnum() and w not in stop_words]
+    return " ".join(filtered)
+
+processed_questions = [preprocess(q) for q in questions]
+vectorizer = TfidfVectorizer(ngram_range=(1, 2))
+tfidf_matrix = vectorizer.fit_transform(processed_questions)
+
+def get_answer(user_input):
+    processed_input = preprocess(user_input)
+    user_vec = vectorizer.transform([processed_input])
+    similarity = cosine_similarity(user_vec, tfidf_matrix)[0]
+    top_indices = similarity.argsort()[-3:][::-1]
+    top_scores = similarity[top_indices]
+
+    if top_scores[0] < 0.3:
+        return None, None, [(questions[i], round(top_scores[idx], 2)) for idx, i in enumerate(top_indices)]
+    best_idx = top_indices[0]
+    return questions[best_idx], answers[best_idx], None
+
+# PyQt Application
+class ChatbotWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("📘 FAQ Chatbot")
+        self.resize(700, 500)
+
+        self.label = QLabel("Ask a question:")
+        self.input = QLineEdit()
+        self.button = QPushButton("Get Answer")
+        self.output = QTextEdit()
+        self.output.setReadOnly(True)
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.label)
+        vbox.addWidget(self.input)
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.button)
+        vbox.addLayout(hbox)
+
+        vbox.addWidget(QLabel("Response:"))
+        vbox.addWidget(self.output)
+
+        self.setLayout(vbox)
+        self.button.clicked.connect(self.respond)
+
+    def respond(self):
+        user_input = self.input.text().strip()
+        if not user_input:
+            return
+
+        matched_q, response, suggestions = get_answer(user_input)
+        if response:
+            self.output.append(f"You: {user_input}")
+            self.output.append(f"Matched: {matched_q}")
+            self.output.append(f"Bot: {response}\n")
+        else:
+            self.output.append(f"You: {user_input}")
+            self.output.append("Bot: No exact match found. Try one of these:")
+            for i, (q, score) in enumerate(suggestions, 1):
+                self.output.append(f"  {i}. {q} (Score: {score})")
+            self.output.append("")
+
+        with open("chat_log.txt", "a", encoding="utf-8") as f:
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{ts}] User: {user_input}\n")
+            if response:
+                f.write(f"[{ts}] Bot: {response}\n\n")
+            else:
+                f.write(f"[{ts}] Bot: Suggestions: {', '.join([q for q, _ in suggestions])}\n\n")
+        self.input.clear()
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = ChatbotWindow()
+    window.show()
+    sys.exit(app.exec_())
