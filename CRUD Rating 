@@ -1,0 +1,189 @@
+from flask import Flask, request, jsonify
+import pyodbc, os, webbrowser
+from threading import Timer
+
+app = Flask(__name__)
+
+# --------------------------
+# 🔧 Configuration (Dynamic DB Path)
+# --------------------------
+DB_FOLDER = r"C:\Users\Public"   # Change this folder as needed
+DB_FILE = "ratings_portal.accdb" # Access database file
+DB_PATH = os.path.join(DB_FOLDER, DB_FILE)
+
+# --------------------------
+# 🧱 HTML Page (All in One)
+# --------------------------
+HTML_PAGE = """
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Multi-Tab Rating Portal</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial; margin: 30px; }
+    .tab { display: none; margin-top: 20px; }
+    .tab.active { display: block; }
+    button, select, input { margin: 6px; padding: 6px; }
+    .tabs button { margin-right: 10px; cursor: pointer; }
+    .question { margin: 8px 0; }
+    #status { font-weight: bold; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Team Rating Dashboard</h2>
+  <div class="tabs" id="tabButtons"></div>
+  <div id="tabContent"></div>
+  <p id="status"></p>
+
+  <script>
+    let activeTab = null;
+    let questions = {};
+
+    // Load available tabs from server
+    async function loadTabs() {
+      const res = await fetch('/get_tabs');
+      const data = await res.json();
+      const tabButtons = document.getElementById('tabButtons');
+      tabButtons.innerHTML = "";
+      data.tabs.forEach(tab => {
+        const btn = document.createElement('button');
+        btn.textContent = tab;
+        btn.onclick = () => loadTabQuestions(tab);
+        tabButtons.appendChild(btn);
+      });
+    }
+
+    // Load questions for a tab
+    async function loadTabQuestions(tabName) {
+      activeTab = tabName;
+      const res = await fetch('/get_questions?tab=' + encodeURIComponent(tabName));
+      const data = await res.json();
+      questions = data.questions;
+
+      const container = document.getElementById('tabContent');
+      container.innerHTML = `<h3>${tabName}</h3><input id='userName' placeholder='Your Name'><br>`;
+
+      questions.forEach(q => {
+        container.innerHTML += `
+          <div class='question'>
+            <b>${q.QuestionNo}. ${q.QuestionText}</b><br>
+            Rating: <select id='rating_${q.QuestionNo}'>
+              <option value="">Select</option>
+              <option>1</option>
+              <option>2</option>
+              <option>3</option>
+              <option>4</option>
+              <option>5</option>
+            </select>
+            Comments: <input type='text' id='comment_${q.QuestionNo}' placeholder='Optional comment'>
+          </div>`;
+      });
+      container.innerHTML += `<br><button onclick='submitRatings()'>Submit Ratings</button>`;
+    }
+
+    // Submit all ratings for current tab
+    async function submitRatings() {
+      const name = document.getElementById('userName').value.trim();
+      const status = document.getElementById('status');
+      if (!name) { status.textContent = "⚠️ Please enter your name."; return; }
+
+      const answers = questions.map(q => ({
+        QuestionNo: q.QuestionNo,
+        Rating: document.getElementById('rating_' + q.QuestionNo).value,
+        Comments: document.getElementById('comment_' + q.QuestionNo).value
+      }));
+
+      status.textContent = "Saving...";
+
+      const res = await fetch('/save_ratings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ tab: activeTab, name, answers })
+      });
+      const result = await res.json();
+      if (result.success) status.textContent = "✅ Ratings saved successfully!";
+      else status.textContent = "❌ Error: " + result.error;
+    }
+
+    loadTabs();
+  </script>
+</body>
+</html>
+"""
+
+# --------------------------
+# 🧩 Flask Routes
+# --------------------------
+
+def get_connection():
+    conn_str = f"Driver={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={DB_PATH};"
+    return pyodbc.connect(conn_str)
+
+@app.route('/')
+def home():
+    return HTML_PAGE
+
+
+@app.route('/get_tabs')
+def get_tabs():
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT TabName FROM Tabs WHERE IsActive=True")
+        tabs = [row.TabName for row in cursor.fetchall()]
+        conn.close()
+        return jsonify({'tabs': tabs})
+    except Exception as e:
+        return jsonify({'tabs': [], 'error': str(e)})
+
+
+@app.route('/get_questions')
+def get_questions():
+    try:
+        tab = request.args.get('tab')
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT QuestionNo, QuestionText FROM Questions WHERE TabName=?", (tab,))
+        data = [{'QuestionNo': int(r.QuestionNo), 'QuestionText': r.QuestionText} for r in cursor.fetchall()]
+        conn.close()
+        return jsonify({'questions': data})
+    except Exception as e:
+        return jsonify({'questions': [], 'error': str(e)})
+
+
+@app.route('/save_ratings', methods=['POST'])
+def save_ratings():
+    try:
+        data = request.get_json()
+        tab = data['tab']
+        name = data['name']
+        answers = data['answers']
+
+        conn = get_connection()
+        cursor = conn.cursor()
+        for ans in answers:
+            if ans['Rating']:  # Save only if rating given
+                cursor.execute("""
+                    INSERT INTO Ratings (TabName, QuestionNo, Name, Rating, Comments)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (tab, ans['QuestionNo'], name, ans['Rating'], ans['Comments']))
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+# --------------------------
+# 🚀 Auto-launch Browser
+# --------------------------
+def open_browser():
+    webbrowser.open_new("http://127.0.0.1:5000/")
+
+if __name__ == '__main__':
+    print(f"🗂 Using Access DB: {DB_PATH}")
+    # Launch browser automatically after short delay
+    Timer(1, open_browser).start()
+    app.run(debug=True)
