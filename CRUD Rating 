@@ -1,189 +1,175 @@
-from flask import Flask, request, jsonify
-import pyodbc, os, webbrowser
-from threading import Timer
+from flask import Flask, render_template_string, request, jsonify
+import pyodbc
+import webbrowser
+import threading
 
 app = Flask(__name__)
 
-# --------------------------
-# 🔧 Configuration (Dynamic DB Path)
-# --------------------------
-DB_FOLDER = r"C:\Users\Public"   # Change this folder as needed
-DB_FILE = "ratings_portal.accdb" # Access database file
-DB_PATH = os.path.join(DB_FOLDER, DB_FILE)
+# 🔹 Dynamic MS Access Database Path (Change only this variable)
+ACCESS_DB_PATH = r"C:\Users\Anil\Documents\Ratings.accdb"
 
-# --------------------------
-# 🧱 HTML Page (All in One)
-# --------------------------
+# 🔹 Build Connection String
+CONN_STR = (
+    r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"
+    fr"DBQ={ACCESS_DB_PATH};"
+)
+
+# 🔹 HTML + JS (Single Page with Tabs, Ratings, and Descriptions)
 HTML_PAGE = """
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Multi-Tab Rating Portal</title>
-  <meta charset="UTF-8">
-  <style>
-    body { font-family: Arial; margin: 30px; }
-    .tab { display: none; margin-top: 20px; }
-    .tab.active { display: block; }
-    button, select, input { margin: 6px; padding: 6px; }
-    .tabs button { margin-right: 10px; cursor: pointer; }
-    .question { margin: 8px 0; }
-    #status { font-weight: bold; margin-top: 10px; }
-  </style>
+    <title>Rating Portal</title>
+    <style>
+        body { font-family: Arial; margin: 30px; }
+        .tabs { overflow: hidden; background-color: #f1f1f1; }
+        .tabs button { background-color: inherit; border: none; padding: 14px 16px; cursor: pointer; transition: 0.3s; }
+        .tabs button:hover { background-color: #ddd; }
+        .tabs button.active { background-color: #ccc; }
+        .tabcontent { display: none; padding: 20px; border: 1px solid #ccc; }
+        label { display: block; margin-top: 10px; }
+        select, textarea { width: 100%; padding: 8px; margin-top: 5px; }
+        button.submit-btn { margin-top: 10px; background-color: #4CAF50; color: white; border: none; padding: 10px 15px; }
+    </style>
 </head>
 <body>
-  <h2>Team Rating Dashboard</h2>
-  <div class="tabs" id="tabButtons"></div>
-  <div id="tabContent"></div>
-  <p id="status"></p>
 
-  <script>
-    let activeTab = null;
-    let questions = {};
+<h2>Manager Rating Portal</h2>
 
-    // Load available tabs from server
-    async function loadTabs() {
-      const res = await fetch('/get_tabs');
-      const data = await res.json();
-      const tabButtons = document.getElementById('tabButtons');
-      tabButtons.innerHTML = "";
-      data.tabs.forEach(tab => {
-        const btn = document.createElement('button');
-        btn.textContent = tab;
-        btn.onclick = () => loadTabQuestions(tab);
-        tabButtons.appendChild(btn);
+<div>
+  <label>Manager Name:</label>
+  <input type="text" id="manager" placeholder="Enter Manager Name" style="padding:5px;width:50%">
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div id="tabcontent"></div>
+
+<script>
+// 🔹 Fetch accessible tabs dynamically from backend
+fetch('/get_tabs')
+  .then(res => res.json())
+  .then(tabs => {
+      const tabContainer = document.getElementById('tabs');
+      const contentContainer = document.getElementById('tabcontent');
+      tabs.forEach((tab, index) => {
+          const btn = document.createElement('button');
+          btn.textContent = tab;
+          btn.onclick = () => openTab(tab);
+          if (index === 0) btn.classList.add('active');
+          tabContainer.appendChild(btn);
+
+          const div = document.createElement('div');
+          div.id = tab;
+          div.classList.add('tabcontent');
+          if (index === 0) div.style.display = "block";
+
+          // Create 10 rating options per tab
+          for (let i=1; i<=10; i++) {
+              div.innerHTML += `
+                <label>Rating ${i}:</label>
+                <select id="${tab}_rating_${i}">
+                  <option value="">--Select Rating--</option>
+                  <option value="1">1 - Poor</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10 - Excellent</option>
+                </select>
+                <textarea id="${tab}_desc_${i}" placeholder="Enter description for Rating ${i}"></textarea>
+              `;
+          }
+
+          div.innerHTML += `<button class='submit-btn' onclick="submitRatings('${tab}')">Submit Ratings</button>`;
+          contentContainer.appendChild(div);
       });
+  });
+
+function openTab(tabName) {
+    const tabs = document.querySelectorAll('.tabcontent');
+    const btns = document.querySelectorAll('.tabs button');
+    tabs.forEach(t => t.style.display = "none");
+    btns.forEach(b => b.classList.remove('active'));
+    document.getElementById(tabName).style.display = "block";
+    event.target.classList.add('active');
+}
+
+// 🔹 Submit all ratings of selected tab
+function submitRatings(tab) {
+    const manager = document.getElementById('manager').value;
+    if (!manager) { alert("Please enter manager name first."); return; }
+
+    const ratings = [];
+    for (let i=1; i<=10; i++) {
+        const rate = document.getElementById(`${tab}_rating_${i}`).value;
+        const desc = document.getElementById(`${tab}_desc_${i}`).value;
+        if (rate) ratings.push({ number: i, rating: rate, description: desc });
     }
 
-    // Load questions for a tab
-    async function loadTabQuestions(tabName) {
-      activeTab = tabName;
-      const res = await fetch('/get_questions?tab=' + encodeURIComponent(tabName));
-      const data = await res.json();
-      questions = data.questions;
-
-      const container = document.getElementById('tabContent');
-      container.innerHTML = `<h3>${tabName}</h3><input id='userName' placeholder='Your Name'><br>`;
-
-      questions.forEach(q => {
-        container.innerHTML += `
-          <div class='question'>
-            <b>${q.QuestionNo}. ${q.QuestionText}</b><br>
-            Rating: <select id='rating_${q.QuestionNo}'>
-              <option value="">Select</option>
-              <option>1</option>
-              <option>2</option>
-              <option>3</option>
-              <option>4</option>
-              <option>5</option>
-            </select>
-            Comments: <input type='text' id='comment_${q.QuestionNo}' placeholder='Optional comment'>
-          </div>`;
-      });
-      container.innerHTML += `<br><button onclick='submitRatings()'>Submit Ratings</button>`;
-    }
-
-    // Submit all ratings for current tab
-    async function submitRatings() {
-      const name = document.getElementById('userName').value.trim();
-      const status = document.getElementById('status');
-      if (!name) { status.textContent = "⚠️ Please enter your name."; return; }
-
-      const answers = questions.map(q => ({
-        QuestionNo: q.QuestionNo,
-        Rating: document.getElementById('rating_' + q.QuestionNo).value,
-        Comments: document.getElementById('comment_' + q.QuestionNo).value
-      }));
-
-      status.textContent = "Saving...";
-
-      const res = await fetch('/save_ratings', {
+    fetch('/save_ratings', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ tab: activeTab, name, answers })
-      });
-      const result = await res.json();
-      if (result.success) status.textContent = "✅ Ratings saved successfully!";
-      else status.textContent = "❌ Error: " + result.error;
-    }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tab, manager, ratings })
+    })
+    .then(res => res.json())
+    .then(data => alert(data.message));
+}
+</script>
 
-    loadTabs();
-  </script>
 </body>
 </html>
 """
 
-# --------------------------
-# 🧩 Flask Routes
-# --------------------------
-
-def get_connection():
-    conn_str = f"Driver={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={DB_PATH};"
-    return pyodbc.connect(conn_str)
-
-@app.route('/')
-def home():
-    return HTML_PAGE
-
-
-@app.route('/get_tabs')
+# 🔹 Fetch accessible tabs dynamically
+@app.route("/get_tabs")
 def get_tabs():
+    tabs = []
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT TabName FROM Tabs WHERE IsActive=True")
-        tabs = [row.TabName for row in cursor.fetchall()]
+        conn = pyodbc.connect(CONN_STR)
+        cur = conn.cursor()
+        cur.execute("SELECT TabName FROM TabsAccess WHERE IsActive = True")
+        rows = cur.fetchall()
+        tabs = [r[0] for r in rows]
         conn.close()
-        return jsonify({'tabs': tabs})
     except Exception as e:
-        return jsonify({'tabs': [], 'error': str(e)})
+        tabs = ["General", "Performance", "Teamwork"]
+    return jsonify(tabs)
 
-
-@app.route('/get_questions')
-def get_questions():
-    try:
-        tab = request.args.get('tab')
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT QuestionNo, QuestionText FROM Questions WHERE TabName=?", (tab,))
-        data = [{'QuestionNo': int(r.QuestionNo), 'QuestionText': r.QuestionText} for r in cursor.fetchall()]
-        conn.close()
-        return jsonify({'questions': data})
-    except Exception as e:
-        return jsonify({'questions': [], 'error': str(e)})
-
-
-@app.route('/save_ratings', methods=['POST'])
+# 🔹 Save ratings
+@app.route("/save_ratings", methods=["POST"])
 def save_ratings():
-    try:
-        data = request.get_json()
-        tab = data['tab']
-        name = data['name']
-        answers = data['answers']
+    data = request.get_json()
+    manager = data["manager"]
+    tab = data["tab"]
+    ratings = data["ratings"]
 
-        conn = get_connection()
-        cursor = conn.cursor()
-        for ans in answers:
-            if ans['Rating']:  # Save only if rating given
-                cursor.execute("""
-                    INSERT INTO Ratings (TabName, QuestionNo, Name, Rating, Comments)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (tab, ans['QuestionNo'], name, ans['Rating'], ans['Comments']))
+    try:
+        conn = pyodbc.connect(CONN_STR)
+        cur = conn.cursor()
+        for r in ratings:
+            cur.execute(
+                "INSERT INTO Ratings (Manager, Tab, RatingNumber, RatingValue, Description) VALUES (?, ?, ?, ?, ?)",
+                (manager, tab, r["number"], r["rating"], r["description"]),
+            )
         conn.commit()
         conn.close()
-
-        return jsonify({'success': True})
+        return jsonify({"message": "Ratings saved successfully!"})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({"message": f"Error: {e}"})
 
+# 🔹 Launch HTML directly on start
+@app.route("/")
+def index():
+    return render_template_string(HTML_PAGE)
 
-# --------------------------
-# 🚀 Auto-launch Browser
-# --------------------------
 def open_browser():
-    webbrowser.open_new("http://127.0.0.1:5000/")
+    webbrowser.open_new("http://127.0.0.1:5000")
 
-if __name__ == '__main__':
-    print(f"🗂 Using Access DB: {DB_PATH}")
-    # Launch browser automatically after short delay
-    Timer(1, open_browser).start()
-    app.run(debug=True)
+if __name__ == "__main__":
+    threading.Timer(1.5, open_browser).start()
+    app.run(debug=False)
