@@ -1,175 +1,240 @@
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, request, jsonify, render_template_string
 import pyodbc
+import os
 import webbrowser
 import threading
+from datetime import datetime
 
 app = Flask(__name__)
 
-# 🔹 Dynamic MS Access Database Path (Change only this variable)
-ACCESS_DB_PATH = r"C:\Users\Anil\Documents\Ratings.accdb"
+# ========== CONFIG ==========
+# Change this path to point to your Access .accdb file
+ACCESS_DB_PATH = r"C:\Users\Public\ratings_portal.accdb"
 
-# 🔹 Build Connection String
-CONN_STR = (
-    r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"
-    fr"DBQ={ACCESS_DB_PATH};"
-)
+# Connection string
+CONN_STR = fr"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={ACCESS_DB_PATH};"
 
-# 🔹 HTML + JS (Single Page with Tabs, Ratings, and Descriptions)
+# ========== SINGLE-PAGE HTML (embedded) ==========
 HTML_PAGE = """
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-    <title>Rating Portal</title>
-    <style>
-        body { font-family: Arial; margin: 30px; }
-        .tabs { overflow: hidden; background-color: #f1f1f1; }
-        .tabs button { background-color: inherit; border: none; padding: 14px 16px; cursor: pointer; transition: 0.3s; }
-        .tabs button:hover { background-color: #ddd; }
-        .tabs button.active { background-color: #ccc; }
-        .tabcontent { display: none; padding: 20px; border: 1px solid #ccc; }
-        label { display: block; margin-top: 10px; }
-        select, textarea { width: 100%; padding: 8px; margin-top: 5px; }
-        button.submit-btn { margin-top: 10px; background-color: #4CAF50; color: white; border: none; padding: 10px 15px; }
-    </style>
+  <meta charset="utf-8">
+  <title>Ratings Portal</title>
+  <style>
+    body{font-family:Arial;margin:24px;}
+    .tabs{display:flex;gap:8px;margin-bottom:12px;}
+    .tabs button{padding:8px 12px;cursor:pointer;}
+    .tabs button.active{background:#2b7cff;color:#fff;border:none;border-radius:4px;}
+    .container{border:1px solid #ddd;padding:16px;border-radius:6px;}
+    .question{margin:12px 0;padding:8px;border-bottom:1px solid #f0f0f0;}
+    .param{font-weight:600;}
+    .desc{font-size:0.95em;color:#333;margin:6px 0;}
+    select, textarea, input[type=text]{width:100%;padding:8px;margin-top:6px;border:1px solid #ccc;border-radius:4px;}
+    textarea{min-height:60px;resize:vertical;}
+    .submit{background:#28a745;color:#fff;padding:10px 14px;border:none;border-radius:4px;cursor:pointer;margin-top:10px;}
+    .small{font-size:0.9em;color:#666;}
+  </style>
 </head>
 <body>
+  <h2>Ratings Portal</h2>
+  <div>
+    <label>Submitter Name:</label>
+    <input id="submitter" type="text" placeholder="Enter your name">
+  </div>
 
-<h2>Manager Rating Portal</h2>
+  <div class="tabs" id="tabs"></div>
 
-<div>
-  <label>Manager Name:</label>
-  <input type="text" id="manager" placeholder="Enter Manager Name" style="padding:5px;width:50%">
-</div>
-
-<div class="tabs" id="tabs"></div>
-
-<div id="tabcontent"></div>
+  <div id="content" class="container">
+    <p class="small">Select a tab to load its parameters...</p>
+  </div>
 
 <script>
-// 🔹 Fetch accessible tabs dynamically from backend
-fetch('/get_tabs')
-  .then(res => res.json())
-  .then(tabs => {
-      const tabContainer = document.getElementById('tabs');
-      const contentContainer = document.getElementById('tabcontent');
-      tabs.forEach((tab, index) => {
-          const btn = document.createElement('button');
-          btn.textContent = tab;
-          btn.onclick = () => openTab(tab);
-          if (index === 0) btn.classList.add('active');
-          tabContainer.appendChild(btn);
+async function loadTabs() {
+  const res = await fetch('/get_tabs');
+  const data = await res.json();
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  data.tabs.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = t;
+    btn.dataset.tab = t;
+    btn.onclick = () => openTab(t, btn);
+    if (i===0) btn.classList.add('active');
+    tabs.appendChild(btn);
+  });
+  // open first active tab automatically if any
+  if (data.tabs.length) openTab(data.tabs[0], tabs.querySelector('button'));
+}
 
-          const div = document.createElement('div');
-          div.id = tab;
-          div.classList.add('tabcontent');
-          if (index === 0) div.style.display = "block";
+async function openTab(tabName, btn) {
+  // mark active
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
 
-          // Create 10 rating options per tab
-          for (let i=1; i<=10; i++) {
-              div.innerHTML += `
-                <label>Rating ${i}:</label>
-                <select id="${tab}_rating_${i}">
-                  <option value="">--Select Rating--</option>
-                  <option value="1">1 - Poor</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5">5</option>
-                  <option value="6">6</option>
-                  <option value="7">7</option>
-                  <option value="8">8</option>
-                  <option value="9">9</option>
-                  <option value="10">10 - Excellent</option>
-                </select>
-                <textarea id="${tab}_desc_${i}" placeholder="Enter description for Rating ${i}"></textarea>
-              `;
-          }
+  // fetch questions
+  const res = await fetch('/get_questions?tab=' + encodeURIComponent(tabName));
+  const payload = await res.json();
+  const content = document.getElementById('content');
 
-          div.innerHTML += `<button class='submit-btn' onclick="submitRatings('${tab}')">Submit Ratings</button>`;
-          contentContainer.appendChild(div);
-      });
+  if (!payload.questions || payload.questions.length===0) {
+    content.innerHTML = '<p class="small">No parameters found for this tab.</p>';
+    return;
+  }
+
+  // Build UI: for each question show Parameter (label), Description (from DB), Dropdown (1..10) and comments
+  let html = `<h3>${tabName}</h3>
+              <p class="small">Each parameter has a rating dropdown (1-10) and a comment box.</p>
+              <div id="questions-area">`;
+  payload.questions.forEach(q => {
+    html += `
+      <div class="question" data-qno="${q.QuestionNo}">
+        <div class="param">${q.QuestionNo}. ${q.Parameter}</div>
+        <div class="desc">${q.Description || ''}</div>
+        <label>Rating:</label>
+        <select id="rating_${q.QuestionNo}">
+          <option value="">-- Select rating --</option>
+          ${Array.from({length:10}, (_,i)=>\`<option value="\${i+1}">\${i+1}</option>\`).join('')}
+        </select>
+        <label>Comments (optional):</label>
+        <textarea id="comment_${q.QuestionNo}" placeholder="Add comments for ${q.Parameter}"></textarea>
+      </div>`;
+  });
+  html += `</div><button class="submit" onclick="submit('${tabName}')">Submit Ratings</button>
+           <div id="status" style="margin-top:10px"></div>`;
+
+  content.innerHTML = html;
+}
+
+async function submit(tabName) {
+  const submitter = document.getElementById('submitter').value.trim();
+  if (!submitter) { alert('Please enter your name before submitting.'); return; }
+
+  const qs = Array.from(document.querySelectorAll('#questions-area .question'));
+  const answers = qs.map(div => {
+    const qno = parseInt(div.dataset.qno, 10);
+    const rating = document.getElementById('rating_' + qno).value;
+    const comment = document.getElementById('comment_' + qno).value;
+    return { QuestionNo: qno, Rating: rating ? parseInt(rating,10) : None, Comments: comment };
   });
 
-function openTab(tabName) {
-    const tabs = document.querySelectorAll('.tabcontent');
-    const btns = document.querySelectorAll('.tabs button');
-    tabs.forEach(t => t.style.display = "none");
-    btns.forEach(b => b.classList.remove('active'));
-    document.getElementById(tabName).style.display = "block";
-    event.target.classList.add('active');
+  // build payload only for answered ratings
+  const payload = {
+    tab: tabName,
+    submitter,
+    answers: answers.filter(a=>a.Rating)  // only save where rating selected
+  };
+
+  if (payload.answers.length === 0) {
+    if (!confirm('No ratings selected. Do you want to submit empty responses?')) return;
+  }
+
+  document.getElementById('status').textContent = 'Saving...';
+
+  const res = await fetch('/save_ratings', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const r = await res.json();
+  if (r.success) {
+    document.getElementById('status').textContent = '✅ Saved successfully.';
+    // optional: clear selections
+    qs.forEach(div=>{
+      const qno = div.dataset.qno;
+      document.getElementById('rating_' + qno).value = '';
+      document.getElementById('comment_' + qno).value = '';
+    });
+  } else {
+    document.getElementById('status').textContent = '❌ Error: ' + r.error;
+  }
 }
 
-// 🔹 Submit all ratings of selected tab
-function submitRatings(tab) {
-    const manager = document.getElementById('manager').value;
-    if (!manager) { alert("Please enter manager name first."); return; }
-
-    const ratings = [];
-    for (let i=1; i<=10; i++) {
-        const rate = document.getElementById(`${tab}_rating_${i}`).value;
-        const desc = document.getElementById(`${tab}_desc_${i}`).value;
-        if (rate) ratings.push({ number: i, rating: rate, description: desc });
-    }
-
-    fetch('/save_ratings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tab, manager, ratings })
-    })
-    .then(res => res.json())
-    .then(data => alert(data.message));
-}
+window.addEventListener('DOMContentLoaded', loadTabs);
 </script>
-
 </body>
 </html>
 """
 
-# 🔹 Fetch accessible tabs dynamically
-@app.route("/get_tabs")
-def get_tabs():
-    tabs = []
-    try:
-        conn = pyodbc.connect(CONN_STR)
-        cur = conn.cursor()
-        cur.execute("SELECT TabName FROM TabsAccess WHERE IsActive = True")
-        rows = cur.fetchall()
-        tabs = [r[0] for r in rows]
-        conn.close()
-    except Exception as e:
-        tabs = ["General", "Performance", "Teamwork"]
-    return jsonify(tabs)
+# ========== Helper to get DB connection ==========
+def get_conn():
+    return pyodbc.connect(CONN_STR)
 
-# 🔹 Save ratings
-@app.route("/save_ratings", methods=["POST"])
-def save_ratings():
-    data = request.get_json()
-    manager = data["manager"]
-    tab = data["tab"]
-    ratings = data["ratings"]
-
-    try:
-        conn = pyodbc.connect(CONN_STR)
-        cur = conn.cursor()
-        for r in ratings:
-            cur.execute(
-                "INSERT INTO Ratings (Manager, Tab, RatingNumber, RatingValue, Description) VALUES (?, ?, ?, ?, ?)",
-                (manager, tab, r["number"], r["rating"], r["description"]),
-            )
-        conn.commit()
-        conn.close()
-        return jsonify({"message": "Ratings saved successfully!"})
-    except Exception as e:
-        return jsonify({"message": f"Error: {e}"})
-
-# 🔹 Launch HTML directly on start
+# ========== Routes ==========
 @app.route("/")
 def index():
     return render_template_string(HTML_PAGE)
 
+@app.route("/get_tabs")
+def get_tabs():
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        # Expect TabsAccess(TabName Text, IsActive Yes/No)
+        cur.execute("SELECT TabName FROM TabsAccess WHERE IsActive = True ORDER BY TabName")
+        rows = cur.fetchall()
+        tabs = [r.TabName for r in rows]
+        conn.close()
+        return jsonify({"tabs": tabs})
+    except Exception as e:
+        # return empty if any issue (caller will show placeholder)
+        return jsonify({"tabs": [], "error": str(e)})
+
+@app.route("/get_questions")
+def get_questions():
+    tab = request.args.get('tab') or ''
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        # Expect Questions(TabName Text, QuestionNo Number, Parameter Text, Description Memo)
+        cur.execute("SELECT QuestionNo, Parameter, Description FROM Questions WHERE TabName = ? ORDER BY QuestionNo", (tab,))
+        rows = cur.fetchall()
+        questions = []
+        for r in rows:
+            questions.append({
+                "QuestionNo": int(r.QuestionNo),
+                "Parameter": r.Parameter,
+                "Description": r.Description or ""
+            })
+        conn.close()
+        return jsonify({"questions": questions})
+    except Exception as e:
+        return jsonify({"questions": [], "error": str(e)})
+
+@app.route("/save_ratings", methods=["POST"])
+def save_ratings():
+    try:
+        data = request.get_json()
+        tab = data.get("tab")
+        submitter = data.get("submitter") or data.get("manager") or "Unknown"
+        answers = data.get("answers", [])
+
+        conn = get_conn()
+        cur = conn.cursor()
+        for a in answers:
+            qno = a.get("QuestionNo")
+            rating = a.get("Rating")
+            comments = a.get("Comments") or ""
+            submitted_at = datetime.now()
+            # Ratings(TabName, QuestionNo, Manager, RatingValue, Comments, SubmittedAt)
+            cur.execute("""
+                INSERT INTO Ratings (TabName, QuestionNo, Manager, RatingValue, Comments, SubmittedAt)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (tab, qno, submitter, rating, comments, submitted_at))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+# Auto-open browser when app starts
 def open_browser():
-    webbrowser.open_new("http://127.0.0.1:5000")
+    webbrowser.open_new("http://127.0.0.1:5000/")
 
 if __name__ == "__main__":
-    threading.Timer(1.5, open_browser).start()
-    app.run(debug=False)
+    # quick sanity: check DB path exists and warn (but still run)
+    if not os.path.exists(ACCESS_DB_PATH):
+        print("WARNING: Access DB not found at:", ACCESS_DB_PATH)
+        print("Please create DB and tables (TabsAccess, Questions, Ratings) as described.")
+    threading.Timer(1.2, open_browser).start()
+    app.run(debug=True)
