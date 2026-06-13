@@ -1,0 +1,260 @@
+Create a professional BPMN Process Modeling, Validation, and Simulation application using only HTML, CSS, SVG, and Vanilla JavaScript. Do not use external frameworks or dependencies.
+
+PRIMARY OBJECTIVE
+
+Build a BPMN-style editor and viewer that can:
+
+- Generate BPMN diagrams from structured process data.
+- Allow users to manually adjust and correct diagrams.
+- Validate process models.
+- Simulate process execution with animations.
+- Provide a professional enterprise-grade user experience similar to BPMN.io, Signavio, Visio, or Camunda Modeler.
+
+USER INTERFACE
+
+- The BPMN canvas must be the primary focus of the application.
+- The diagram area should occupy 80-90% of the available screen space.
+- Avoid fixed left and right side panels.
+- Use collapsible, floating, resizable, or bottom-docked panels.
+- Allow users to show or hide:
+  - Issue Panel
+  - Properties Panel
+  - Process Explorer
+  - Validation Panel
+- Include:
+  - Fit to Screen
+  - Center Diagram
+  - Zoom In
+  - Zoom Out
+  - Full Screen Mode
+  - Undo
+  - Redo
+  - Auto Arrange
+  - Auto Align
+  - Smart Cleanup
+
+VISUAL DESIGN
+
+- Use a professional light theme by default.
+- White or light-gray canvas background.
+- Avoid dark or black backgrounds unless Dark Mode is enabled.
+- Modern enterprise styling.
+- Clean typography.
+- Subtle shadows and borders.
+- High readability.
+- Responsive layout.
+
+CANVAS REQUIREMENTS
+
+- Large workspace with pan and zoom support.
+- Infinite or expandable canvas.
+- Auto-center generated diagrams.
+- Fit diagram automatically to screen.
+- Maintain readability for large processes.
+
+SUPPORTED BPMN ELEMENTS
+
+- Start Event
+- End Event
+- Intermediate Event
+- Task
+- User Task
+- Service Task
+- Sub-Process
+- Exclusive Gateway
+- Parallel Gateway
+- Swimlanes
+- Pools
+- Sequence Flows
+- Message Flows
+- Annotations
+
+AUTO LAYOUT ENGINE
+
+Implement intelligent layout generation.
+
+- Prevent overlapping objects.
+- Prevent connector collisions.
+- Maintain consistent spacing.
+- Auto-align objects.
+- Auto-size objects based on content.
+- Auto-wrap long text labels.
+- Dynamically adjust object dimensions.
+- Auto-resize swimlanes.
+- Maintain lane alignment.
+- Support multi-line activity names.
+- Optimize diagram readability.
+
+CONNECTOR ENGINE
+
+- Use SVG-based connectors.
+- Use orthogonal right-angle routing.
+- Avoid crossing through BPMN objects.
+- Minimize connector crossings.
+- Recalculate routes when objects move.
+- Professional BPMN arrowheads.
+- Smooth rendering and routing.
+
+INTERACTIVE EDITING
+
+Every BPMN element must support:
+
+- Drag and drop.
+- Resize handles.
+- Selection.
+- Multi-selection.
+- Inline label editing.
+- Delete.
+- Duplicate.
+- Copy and Paste.
+- Move connectors.
+- Edit connector routing points.
+
+When objects move:
+
+- Connectors must automatically update.
+- Swimlanes should adjust if required.
+
+PROCESS ANALYSIS SUPPORT
+
+Before BPMN generation:
+
+- Parse process information.
+- Identify process participants.
+- Detect swimlanes.
+- Detect activities.
+- Detect gateways.
+- Detect decisions.
+- Detect alternate paths.
+- Detect parallel paths.
+- Detect loops.
+- Detect exceptions.
+- Detect start and end events.
+
+Create a structured process model before rendering.
+
+PROCESS VALIDATION ENGINE
+
+Automatically detect and report:
+
+- Missing Start Event.
+- Missing End Event.
+- Orphan activities.
+- Unconnected objects.
+- Missing gateway outcomes.
+- Connector attachment issues.
+- Swimlane assignment issues.
+- Layout conflicts.
+- Overlapping objects.
+- Connector crossings.
+- Empty labels.
+- Text overflow.
+- Objects outside canvas.
+- Process sequence gaps.
+
+ISSUE REVIEW PANEL
+
+Provide a collapsible Issue Panel.
+
+Each issue should contain:
+
+- Severity (High, Medium, Low)
+- Issue Description
+- Affected Object
+- Suggested Resolution
+
+Users should be able to:
+
+- Click an issue.
+- Automatically navigate to the affected object.
+- Highlight the affected object.
+- Apply suggested fixes when possible.
+
+Do not reserve permanent screen space for the Issue Panel.
+
+PROCESS SIMULATION AND ANIMATION
+
+Provide a Process Playback Mode.
+
+Include:
+
+- Play
+- Pause
+- Resume
+- Restart
+- Step-by-Step Mode
+- Speed Control
+
+Simulation Requirements:
+
+- Animate process flow from Start Event to End Event.
+- Highlight active objects sequentially.
+- Animate movement through sequence flows.
+- Display current activity name during playback.
+- Visually demonstrate process progression.
+
+Use different visual indicators for:
+
+- Normal Flow
+- Yes Path
+- No Path
+- Exception Path
+- Parallel Path
+- Loop Path
+
+Animation should:
+
+- Smoothly move along connectors.
+- Highlight current objects.
+- Dim inactive objects.
+- Clearly show decision routing.
+
+PROCESS FLOW VISUALIZATION
+
+The user should immediately understand:
+
+- Where the process starts.
+- Where it ends.
+- Which path is active.
+- How decisions affect routing.
+- How alternate paths behave.
+- How exceptions are handled.
+- How parallel activities execute.
+
+DATA MODEL
+
+Store all BPMN information in JSON.
+
+Separate application into:
+
+- BPMN Data Model
+- Process Parser
+- Layout Engine
+- Connector Engine
+- Validation Engine
+- Animation Engine
+- Rendering Engine
+- User Interaction Layer
+
+EXPORT AND IMPORT
+
+Support:
+
+- JSON Import
+- JSON Export
+- SVG Export
+- PNG Export
+
+QUALITY REQUIREMENTS
+
+Prioritize:
+
+- Readability
+- Diagram quality
+- Automatic layout quality
+- Process simulation clarity
+- User correction capability
+- BPMN standards compliance
+- Performance for large diagrams
+
+The final result should feel like a lightweight professional BPMN designer, validator, and process simulation tool that automatically creates clean BPMN diagrams, allows manual corrections, validates process quality, and visually demonstrates process execution from Start Event to End Event.
