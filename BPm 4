@@ -1,0 +1,55 @@
+User Interface Requirements:
+
+- The BPMN canvas must be the primary focus of the application and occupy the maximum available screen space.
+- Avoid permanently visible left and right side panels.
+- Use collapsible, resizable, or floating panels instead of fixed sidebars.
+- The BPMN diagram area should consume at least 80-90% of the screen width when panels are collapsed.
+- Allow users to show or hide:
+  - Issue Panel
+  - Properties Panel
+  - Process Explorer
+  - Validation Results
+
+Canvas Requirements:
+
+- Large infinite canvas with zoom and pan support.
+- Automatically fit the BPMN diagram to the available screen size.
+- Provide a "Fit to Screen" button.
+- Provide a "Center Diagram" button.
+- Support full-screen BPMN editing mode.
+- Minimize unused whitespace.
+
+Issue Panel Requirements:
+
+- Display the Issue Panel as:
+  
+  - A collapsible drawer.
+  - A floating window.
+  - A bottom dock panel.
+
+- Do not reserve permanent screen space for the Issue Panel.
+
+- Allow users to open the panel only when required.
+
+- Clicking an issue should navigate to and highlight the affected BPMN object.
+
+Visual Design Requirements:
+
+- Use a light professional theme by default.
+- Avoid black or dark backgrounds unless the user explicitly enables Dark Mode.
+- Use a clean white or light-gray canvas background.
+- Ensure high contrast and readability.
+- Use subtle shadows and borders instead of heavy dark colors.
+- Maintain a modern enterprise appearance similar to BPMN.io, Signavio, or Visio.
+
+Layout Requirements:
+
+- Prioritize diagram visibility over tool panels.
+- Automatically maximize available canvas area.
+- Keep toolbars compact and unobtrusive.
+- Hide advanced options until requested.
+- Ensure large processes remain readable without excessive scrolling.
+
+Goal:
+
+The BPMN diagram should always be the center of attention, with supporting tools appearing only when needed. The user should feel like they are working on a large professional modeling canvas rather than inside a dashboard with multiple fixed panels.
