@@ -1,0 +1,85 @@
+Create a professional BPMN-style process modeling application using only HTML, CSS, SVG, and vanilla JavaScript (no external dependencies).
+
+Requirements:
+
+1. Use SVG as the rendering engine for all BPMN objects and connectors.
+
+2. Support BPMN elements:
+   
+   - Start Event
+   - End Event
+   - Task
+   - Sub-Process
+   - Exclusive Gateway
+   - Parallel Gateway
+   - Swimlanes
+   - Sequence Flows
+   - Text Annotations
+
+3. Implement an automatic layout engine that:
+   
+   - Prevents overlapping objects.
+   - Automatically spaces elements horizontally and vertically.
+   - Resizes swimlanes based on contained objects.
+   - Supports long activity names and multi-line text.
+   - Automatically adjusts object size according to content.
+   - Maintains alignment across swimlanes.
+   - Keeps a consistent grid-based structure.
+
+4. Implement intelligent connector routing:
+   
+   - Use orthogonal (right-angle) connectors.
+   - Avoid connectors crossing through objects.
+   - Automatically reroute connectors when objects move.
+   - Display professional BPMN arrowheads.
+   - Minimize line crossings.
+
+5. Implement collision detection:
+   
+   - Detect overlapping objects.
+   - Automatically reposition objects when overlap occurs.
+   - Maintain minimum spacing between all elements.
+
+6. Make every BPMN element interactive:
+   
+   - Drag and drop.
+   - Resize using handles.
+   - Select and highlight.
+   - Edit labels inline.
+   - Delete objects.
+   - Duplicate objects.
+
+7. Provide a modern BPMN designer experience:
+   
+   - Zoom in/out.
+   - Pan canvas.
+   - Snap to grid.
+   - Undo/redo.
+   - Multi-select support.
+   - Context menu actions.
+
+8. Ensure labels are handled professionally:
+   
+   - Auto-wrap long text.
+   - Dynamically increase object height when needed.
+   - Keep text centered and readable.
+   - Prevent text overflow.
+
+9. Architecture:
+   
+   - Separate data model, layout engine, connector engine, and renderer.
+   - Maintain all BPMN objects in JSON.
+   - Re-render automatically after changes.
+   - Support importing and exporting JSON.
+
+10. Design goals:
+    
+    - Clean BPMN appearance similar to Signavio, Visio, Camunda Modeler, or BPMN.io.
+    - Minimal visual clutter.
+    - Professional spacing.
+    - No overlapping objects.
+    - No connector collisions.
+    - Responsive layout.
+    - Production-quality user experience.
+
+Generate complete, well-structured, commented code with modular architecture and best practices. Prioritize automatic layout, collision avoidance, swimlane management, and professional connector routing over visual styling.
