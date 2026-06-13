@@ -1,0 +1,88 @@
+Create a professional BPMN-style process visualization application using HTML, CSS, SVG, and JavaScript only.
+
+Core Features:
+
+- Generate BPMN diagrams from structured process data.
+- Support Start Events, End Events, Tasks, Gateways, Sub-Processes, Swimlanes, Sequence Flows, and Annotations.
+- Automatically position objects and route connectors.
+- Prevent overlapping objects and crossing connectors.
+- Auto-resize shapes and swimlanes based on content.
+- Support multi-line activity names and dynamic text wrapping.
+
+Interactive Editing:
+
+- Users can drag and move any BPMN object.
+- Users can resize objects.
+- Users can move connectors and adjust routing points.
+- Swimlanes can be resized manually.
+- Changes should automatically update connector positions.
+- Snap-to-grid support.
+- Undo and Redo functionality.
+- Save and Load diagram layouts.
+- Export diagram as SVG, PNG, and JSON.
+
+Process Playback & Animation:
+
+- Include a Play Process button.
+- Animate the process from Start Event to End Event.
+- Highlight each activity as it becomes active.
+- Animate sequence flows to show process movement.
+- Show different visual indicators for:
+  - Normal flow
+  - Yes path
+  - No path
+  - Exception path
+  - Parallel path
+- Display the current activity name during playback.
+- Allow Pause, Resume, Restart, and Speed Control.
+- Support step-by-step walkthrough mode.
+
+Issue Review Panel:
+Create an Issues Panel that automatically detects and lists:
+
+- Overlapping BPMN objects.
+- Crossing connectors.
+- Missing Start Event.
+- Missing End Event.
+- Unconnected activities.
+- Activities outside swimlanes.
+- Empty labels.
+- Gateway decisions without outcomes.
+- Connectors not attached correctly.
+- Swimlane alignment issues.
+- Objects extending outside the canvas.
+- Text overflow issues.
+
+For each issue:
+
+- Show severity (High, Medium, Low).
+- Show affected object name.
+- Provide a suggested fix.
+- Allow users to click the issue and automatically navigate to the affected object.
+
+Layout Assistance:
+
+- Auto Arrange button.
+- Auto Align button.
+- Auto Resize Swimlanes button.
+- Recalculate Connector Routing button.
+- Smart Cleanup button to improve layout automatically.
+
+Visual Design:
+
+- Modern BPMN appearance similar to professional workflow tools.
+- Smooth animations and transitions.
+- Clear swimlane separation.
+- Professional connector routing with right-angle paths.
+- Responsive and scalable canvas.
+- Zoom, Pan, and Fit-to-Screen support.
+
+Architecture:
+
+- Separate Data Model, BPMN Parser, Layout Engine, Connector Engine, Animation Engine, Validation Engine, and Renderer.
+- Store all process data in JSON.
+- Automatically re-render after changes.
+- Maintain high performance for large process diagrams.
+
+Goal:
+Create a BPMN viewer and editor that automatically generates process diagrams, visually simulates process execution, identifies layout and modeling issues, and allows end users to manually adjust, validate, and save the final process model.
