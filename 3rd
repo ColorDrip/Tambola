@@ -1,0 +1,77 @@
+The main issue is that bpmn.io does not automatically create a BPMN diagram from text. It is a BPMN viewer/modeler, not an AI diagram generator. If your prompt asks it to "generate BPMN from a document," you'll often end up with a blank canvas or an invalid diagram.
+
+Instead, add the following instructions to your code-generation prompt.
+
+Important Rendering Instructions
+
+The generated application must produce a professional BPMN diagram with a white background similar to diagrams created in Camunda Modeler or Visio.
+
+Appearance
+
+- Use a pure white canvas (#FFFFFF).
+- Use black text with high contrast.
+- Use subtle gray borders.
+- Avoid dark mode or black backgrounds.
+- Use standard BPMN colors and styling.
+- The diagram should look clean, simple, and professional.
+
+Layout
+
+- Automatically arrange all elements using a top-to-bottom layout unless left-to-right is more suitable.
+- Keep equal spacing between activities.
+- Align shapes perfectly.
+- Never overlap shapes, text, or connectors.
+- Decision gateways must be centered.
+- Label outgoing paths (Yes/No or appropriate conditions).
+- Keep connector routing simple with minimal crossing.
+- Maintain consistent margins and padding.
+
+BPMN Elements
+
+Use proper BPMN elements instead of generic boxes:
+
+- Start Event
+- End Event
+- User Task
+- Service Task
+- Manual Task
+- Script Task
+- Exclusive Gateway
+- Parallel Gateway
+- Intermediate Event
+- Message Flow (where applicable)
+- Sequence Flow
+
+Automatic Improvements
+
+If the process is too large:
+
+- Split it into subprocesses.
+- Keep each section readable.
+- Avoid squeezing everything into one diagram.
+
+Technical Requirements
+
+- Use HTML5, CSS3, JavaScript, and jQuery if helpful.
+- Use the browser version of bpmn.io via CDN (no npm).
+- Generate valid BPMN 2.0 XML first, then render it using bpmn.io.
+- If the BPMN XML is invalid, automatically display the validation error instead of a blank screen.
+- Ensure at least one Start Event and one End Event exist.
+- Ensure every task is connected by sequence flows.
+- Auto-fit the diagram after loading.
+- Add Zoom In, Zoom Out, Fit to Screen, and Reset View controls.
+
+Self-Validation
+
+Before returning the HTML, verify:
+
+- Valid BPMN 2.0 XML.
+- No blank canvas.
+- No missing process objects.
+- White background.
+- Properly rendered BPMN elements.
+- All objects connected.
+- Diagram loads successfully when the HTML file is opened locally.
+- No npm, build step, or additional installation required.
+
+If the BPMN XML cannot be generated reliably from the document, stop and explain the missing information instead of generating an empty or broken diagram.One more recommendation: if your goal is simply to visualize a procedure document, Mermaid or GoJS generally produce much cleaner automatic flowcharts than bpmn.io. bpmn.io is best when you already have valid BPMN XML. For AI-generated diagrams from natural language, Mermaid or GoJS tends to be much more reliable and visually consistent.
