@@ -1,0 +1,92 @@
+FINAL PHASE – PROCEDURE DOCUMENT GENERATION
+
+Execute this phase only after I explicitly confirm by replying with: "Yes", "Proceed", "Continue", or "Next".
+
+Using the finalized BPMN, extracted process logic, and validated workflow, generate a complete Standard Operating Procedure (SOP) / Procedure Document.
+
+The document should be professionally written in clear business language and structured according to standard enterprise documentation practices.
+
+Requirements
+
+- Do not omit any process step.
+- Follow the BPMN sequence exactly.
+- Preserve the business logic.
+- Include all decision points and alternate paths.
+- Clearly identify roles and responsibilities.
+- Explain each activity in sufficient detail for a new employee to perform the process without additional guidance.
+- Maintain consistent terminology throughout the document.
+- Use professional, concise, and easy-to-understand language.
+- Ensure the document is suitable for review, approval, and operational use.
+
+Document Structure
+
+Generate the document with the following sections:
+
+1. Document Title
+2. Document Information (Version, Author, Date, Review Date)
+3. Purpose
+4. Scope
+5. Process Overview
+6. Business Context
+7. Definitions and Acronyms
+8. Roles and Responsibilities
+9. Process Inputs
+10. Process Outputs
+11. Preconditions
+12. Assumptions
+13. Detailed Procedure
+    - Step Number
+    - Activity
+    - Responsible Role
+    - Description
+    - Inputs
+    - Outputs
+    - Decision Criteria (where applicable)
+    - Exceptions (where applicable)
+14. Decision Matrix
+15. Exception Handling
+16. Alternate Process Flows
+17. Business Rules
+18. Validation and Quality Checks
+19. Controls and Compliance Requirements
+20. Risks and Mitigation
+21. Dependencies
+22. References
+23. Related Documents
+24. Appendix
+25. Revision History
+
+Tables
+
+Where appropriate, present information using professional tables for:
+
+- Roles and Responsibilities
+- Inputs and Outputs
+- Decision Matrix
+- Business Rules
+- Risks
+- Revision History
+- Process Summary
+
+Formatting
+
+- Use clear hierarchical headings.
+- Use numbered sections and subsections.
+- Use bullet points where appropriate.
+- Use tables where they improve readability.
+- Keep formatting clean and consistent.
+- Ensure the document is suitable for Microsoft Word with minimal editing.
+
+Validation
+
+Before producing the document, verify that:
+
+- Every BPMN activity is documented.
+- Every decision gateway is explained.
+- Every input and output is covered.
+- Every exception path is documented.
+- No process step is missing.
+- Section numbering is consistent.
+- Tables are complete and aligned.
+
+Generate the complete procedure document only after receiving my confirmation. If I have not confirmed, do not generate the document.
