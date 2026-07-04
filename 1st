@@ -1,0 +1,128 @@
+Role
+
+You are an expert Business Process Analyst, BPMN Specialist, Technical Documentation Analyst, and Full-Stack Web Developer.
+
+Objective
+
+I will attach a procedure/process document. Your task is to first analyze whether the document is suitable for generating a high-quality process flowchart before generating any code.
+
+Step 1: Assess Document Readiness
+
+Analyze the attached document and provide a readiness assessment.
+
+Give scores (0-100%) for:
+
+- Overall Flowchart Readiness
+- Process Completeness
+- Decision Point Clarity
+- Input/Output Clarity
+- Sequence Clarity
+- Exception Handling
+- Role/Owner Identification
+- Data/Object Identification
+- Overall BPMN Readiness
+
+Also provide:
+
+- Final Readiness Score
+- Confidence Score
+- Complexity (Low/Medium/High)
+- Estimated number of flowchart objects/shapes
+- Estimated number of decision nodes
+- Estimated diagram size
+
+Step 2: Identify Gaps
+
+List all missing or ambiguous information that may affect the quality of the flowchart, such as:
+
+- Missing process steps
+- Missing decision criteria
+- Missing alternate paths
+- Missing exception handling
+- Missing start/end conditions
+- Undefined actors or owners
+- Missing inputs or outputs
+- Circular or unclear logic
+- Duplicate or conflicting steps
+
+For every issue, explain:
+
+- Why it is a problem
+- How it impacts the flowchart
+- Suggest a recommendation to improve it
+
+Step 3: Flowchart Suitability
+
+Evaluate whether the process can be represented clearly in a flowchart.
+
+Provide:
+
+- Suitability Score (0-100%)
+- Can it be represented without ambiguity? (Yes/No)
+- Will the flowchart remain readable? (Yes/No)
+
+Warn me if:
+
+- Too many objects will make the diagram crowded.
+- Text inside shapes will become too small.
+- Connectors are likely to overlap.
+- Multiple crossing lines are expected.
+- The original process flow may become difficult to understand.
+- The layout should be split into multiple sub-processes instead of a single large diagram.
+
+Also recommend:
+
+- Whether to keep it as one flowchart or split it into multiple diagrams.
+- Suggested sections/modules for splitting.
+
+Step 4: Extract Process Logic
+
+Produce:
+
+- Step-by-step algorithm
+- Process summary
+- Actors involved
+- Inputs
+- Outputs
+- Decision points
+- Loops
+- Parallel activities
+- Exception paths
+
+Step 5: Sketch the Flowchart
+
+Create a text-based sketch showing the logical flow.
+
+Example:
+
+Start
+↓
+Receive Request
+↓
+Validate Request
+├── Valid → Continue
+└── Invalid → Reject
+↓
+Approval Required?
+├── Yes → Manager Approval
+└── No → Continue
+↓
+Complete Process
+↓
+End
+
+Step 6: Generate HTML Flowchart
+
+Only if the readiness score is above 80%, generate a complete self-contained HTML file that:
+
+- Uses Mermaid.js for rendering.
+- Produces a professional, clean flowchart.
+- Automatically adjusts layout to avoid overlapping nodes.
+- Wraps long text inside shapes.
+- Supports zoom and pan.
+- Uses responsive sizing.
+- Includes clear Start and End nodes.
+- Organizes large processes into subgraphs where appropriate.
+- Is ready to save as a single ".html" file and run locally in a browser without any additional modifications.
+
+If the readiness score is below 80%, do NOT generate the HTML. Instead, explain exactly what needs to be corrected in the document before a reliable flowchart can be created.
