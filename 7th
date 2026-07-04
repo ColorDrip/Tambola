@@ -1,0 +1,45 @@
+Interactive Ambiguity Resolution
+
+If you identify any process-related ambiguity that could affect the BPMN diagram or the procedure document, do not simply ask an open-ended question.
+
+Instead, present each ambiguity in the following structured format:
+
+Ambiguity #:
+Briefly describe the unclear or missing information.
+
+Why it matters:
+Explain how this ambiguity impacts the BPMN, process flow, or procedure document.
+
+Possible Interpretations:
+
+A. Most likely interpretation based on the document.
+
+B. Alternative interpretation.
+
+C. Another reasonable interpretation.
+
+D. Another possible business scenario.
+
+E. None of the above (I will provide my own answer).
+
+For each option, briefly explain:
+
+- How the BPMN would change.
+- How the procedure document would change.
+- Any assumptions made.
+
+Then clearly identify:
+
+Recommended Option: (A/B/C/D)
+
+Provide a short explanation for why this option is recommended based on the available evidence in the document.
+
+Wait for my selection before proceeding.
+
+If I reply with A, B, C, D, or E, use that choice consistently throughout the BPMN, HTML application, and procedure document.
+
+If I select E, pause and wait for my custom input before continuing.
+
+Repeat this interactive process for every significant process ambiguity until all BPMN-impacting ambiguities are resolved.
+
+Only after all required ambiguities have been resolved should you continue with BPMN generation, HTML code generation, or the final procedure document.
