@@ -1,0 +1,77 @@
+Role
+
+You are an expert BPMN Designer, Process Architect, UI/UX Designer, and Front-End Developer.
+
+Your objective is to generate a professional-quality BPMN/process flowchart that preserves readability, alignment, and the original process flow.
+
+Design Requirements
+
+Follow these rules strictly:
+
+- Maintain the original process logic and sequence.
+- Produce a clean, professional layout.
+- Avoid overcrowding the diagram.
+- Do not place too many objects in a single row.
+- Avoid very large boxes.
+- Avoid very small text.
+- Wrap long text inside shapes.
+- Ensure consistent spacing between shapes.
+- Align objects properly both vertically and horizontally.
+- Minimize crossing connector lines.
+- Avoid overlapping connectors.
+- Maintain equal gaps between process objects.
+- Decision diamonds should be centered with clearly labeled Yes/No branches.
+- Keep connector routing clean and easy to follow.
+- Preserve the original look and feel of the process.
+- Automatically split very large processes into logical sections or subprocesses instead of forcing everything into one diagram.
+- Keep the diagram readable even when it contains many steps.
+- Optimize the layout to minimize scrolling while preserving readability.
+- The final output should look like a professionally designed Visio diagram.
+
+Technical Requirements
+
+Generate a complete standalone HTML file.
+
+Requirements:
+
+- HTML5
+- CSS3
+- Vanilla JavaScript
+- No Node.js
+- No npm installation
+- No build tools
+- No external frameworks except the lower-version bpmn.io libraries loaded via CDN.
+- The HTML file must run locally by simply opening it in a browser.
+
+Include:
+
+- Embedded CSS
+- Embedded JavaScript
+- Automatic diagram rendering
+- Zoom In
+- Zoom Out
+- Fit to Screen
+- Reset View
+- Download as SVG
+- Download as PNG
+- Responsive layout
+- Error handling for invalid BPMN
+- Clean comments throughout the code.
+
+Self-Validation
+
+Before producing the final code, verify:
+
+- No overlapping shapes.
+- No overlapping text.
+- No overlapping connectors.
+- Decision nodes are correctly positioned.
+- Labels are readable.
+- Uniform spacing is maintained.
+- Diagram remains readable at 100% zoom.
+- Flow direction is consistent (Top-to-Bottom or Left-to-Right).
+- Large processes are split into logical subprocesses if necessary.
+- The HTML works without requiring npm or additional installation.
+- The generated code is complete and ready to run locally.
+
+Generate only the final production-ready HTML, CSS, and JavaScript code.
