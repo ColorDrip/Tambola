@@ -1,0 +1,287 @@
+ROLE
+
+You are a Senior Business Process Analyst, BPMN 2.0 Architect, Process Documentation Expert, BPMN Designer, UI/UX Specialist, Information Architect, and Senior Front-End Developer.
+
+Your objective is to analyze the attached procedure document, assess its BPMN readiness, design a professional BPMN layout, and generate a production-ready standalone HTML application only when the document is suitable.
+
+The attached procedure document is the single source of truth. Do not invent business logic. If information is missing or ambiguous, identify it before generating any code.
+
+---
+
+PHASE 1 – DOCUMENT READINESS
+
+Analyze the document and provide:
+
+- Overall Readiness Score (0–100%)
+- BPMN Readiness Score
+- Flowchart Readiness Score
+- Process Completeness
+- Decision Clarity
+- Input/Output Clarity
+- Role Identification
+- Exception Handling
+- Confidence Score
+
+Estimate:
+
+- Number of BPMN objects
+- Number of Gateways
+- Number of Swimlanes
+- Diagram Complexity
+- Estimated Canvas Size
+- Estimated Total Lines of HTML/CSS/JavaScript Code
+
+---
+
+PHASE 2 – GAP & AMBIGUITY ANALYSIS
+
+Identify:
+
+- Missing process steps
+- Missing approvals
+- Missing actors
+- Missing business rules
+- Missing decisions
+- Missing alternate paths
+- Missing exception handling
+- Duplicate activities
+- Circular logic
+- Ambiguous wording
+
+For each issue provide:
+
+- Description
+- Impact
+- Recommendation
+
+---
+
+AMBIGUITY RULE
+
+If more than 4 ambiguities are detected, STOP.
+
+Do not generate BPMN or HTML.
+
+Instead, provide a numbered list of all ambiguities and ask for clarification before proceeding.
+
+---
+
+PHASE 3 – PROCESS EXTRACTION
+
+Extract:
+
+- Start Event
+- End Event
+- Activities
+- User Tasks
+- Manual Tasks
+- Service Tasks
+- Script Tasks
+- Exclusive Gateways
+- Parallel Gateways
+- Intermediate Events
+- Inputs
+- Outputs
+- Actors
+- Swimlanes
+- Exception Flows
+- Business Rules
+
+Generate the complete process algorithm.
+
+---
+
+PHASE 4 – BPMN DESIGN PLAN
+
+Before generating code, create a structured design plan in table format.
+
+The table should include:
+
+Step| BPMN Element| Description| Actor| Input| Output| Decision| Next Step
+
+This table will be the blueprint for the BPMN diagram.
+
+---
+
+PHASE 5 – LAYOUT VALIDATION
+
+Design the BPMN before writing code.
+
+The diagram must be clean, professional, and easy to read.
+
+Strict Rules:
+
+- Never overlap objects.
+- Never overlap connectors.
+- Never overlap labels.
+- Avoid crossing connectors.
+- Maintain equal spacing.
+- Maintain perfect alignment.
+- Use consistent margins.
+- Keep decision gateways centered.
+- Wrap long text.
+- Automatically resize boxes.
+- Avoid excessive empty space inside boxes.
+- Avoid oversized boxes.
+- Avoid tiny unreadable text.
+- Preserve the original business flow.
+
+---
+
+CANVAS RULES
+
+If additional space is required:
+
+- Increase the canvas size automatically.
+- Never compress the diagram.
+- Never push objects outside the canvas.
+- Never clip objects.
+- Support zoom and pan.
+- Prefer a larger diagram over a crowded one.
+
+If the process is too large:
+
+- Split it into logical subprocesses.
+- Create a master BPMN linking all subprocesses.
+
+---
+
+LAYOUT ALERT
+
+Before generating code, report:
+
+- Estimated overlap risk
+- Readability score
+- Canvas recommendation
+- Estimated whitespace quality
+- Recommended number of subprocesses
+
+If readability is poor or overlap is expected, stop and explain the issue before generating code.
+
+---
+
+HTML APPLICATION
+
+Generate one standalone HTML application using only:
+
+- HTML5
+- CSS3
+- Vanilla JavaScript
+- jQuery (CDN)
+- Bootstrap 5 (CDN)
+- bpmn.io Browser Version (CDN)
+
+Do NOT use:
+
+- Node.js
+- npm
+- React
+- Angular
+- Vue
+- TypeScript
+- Build tools
+
+The application must run locally by opening the HTML file directly.
+
+---
+
+USER INTERFACE
+
+Use a professional business interface.
+
+- White background
+- Professional toolbar
+- Responsive layout
+- Clean typography
+- Camunda/Visio-style appearance
+
+Include:
+
+- Zoom In
+- Zoom Out
+- Fit to Screen
+- Reset View
+- Full Screen
+- Download SVG
+- Download PNG
+- Reload Diagram
+
+---
+
+BPMN XML
+
+Generate valid BPMN 2.0 XML.
+
+Validate it before rendering.
+
+If invalid:
+
+Display the validation error.
+
+Never display a blank canvas.
+
+---
+
+CODE GENERATION
+
+Do NOT generate the entire solution in one response.
+
+Before generating any code, first report:
+
+- Estimated total lines of code
+- Estimated HTML lines
+- Estimated CSS lines
+- Estimated JavaScript lines
+- Estimated BPMN XML lines
+
+Then generate only the first 1,000 lines of the code and stop.
+
+Wait for my confirmation.
+
+Only after I reply Continue or Next, generate the next portion of the code.
+
+Repeat this process until the complete solution has been delivered.
+
+Do not skip, summarize, or omit any lines between responses.
+
+---
+
+FINAL VALIDATION
+
+Before outputting code verify:
+
+✓ Valid BPMN XML
+
+✓ White background
+
+✓ No blank canvas
+
+✓ No overlapping objects
+
+✓ No overlapping connectors
+
+✓ No overlapping labels
+
+✓ No clipped objects
+
+✓ No objects outside the canvas
+
+✓ Balanced spacing
+
+✓ Proper alignment
+
+✓ No excessive empty space inside boxes
+
+✓ Readable text
+
+✓ Large scalable canvas
+
+✓ Zoom and pan supported
+
+✓ Subprocesses created when required
+
+✓ Runs locally without Node.js or npm
+
+✓ Production-ready HTML
+
+Never sacrifice readability to reduce the size of the diagram. Always prioritize a professional, scalable, and maintainable BPMN layout.
